@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use Controllers\APIEventos;
-use Controllers\APIPonentes;
-use Controllers\PaginasController;
-use Controllers\RegistroController;
-use Controllers\AuthController;
-use Controllers\EventosController;
-use Controllers\RegalosController;
-use Controllers\PonentesController;
-use Controllers\DashboardController;
-use Controllers\RegistradosController;
+use App\Controllers\APIEventos;
+use App\Controllers\APIPonentes;
+use App\Controllers\PaginasController;
+use App\Controllers\RegistroController;
+use App\Controllers\AuthController;
+use App\Controllers\EventosController;
+use App\Controllers\RegalosController;
+use App\Controllers\PonentesController;
+use App\Controllers\DashboardController;
+use App\Controllers\RegistradosController;
 
 
 // Login

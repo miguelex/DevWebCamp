@@ -1,6 +1,8 @@
 <?php 
 
-namespace Model;
+namespace App\Models;
+
+use App\Core\ActiveRecord;
 
 class EventoHorario extends ActiveRecord {
     protected static $tabla = 'eventos';

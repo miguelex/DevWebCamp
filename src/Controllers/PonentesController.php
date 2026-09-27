@@ -1,10 +1,10 @@
 <?php
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Classes\Paginacion;
+use App\Helpers\Paginacion;
 use Intervention\Image\ImageManagerStatic as Image;
-use Model\Ponente;
+use App\Models\Ponente;
 use MVC\Router;
 
 class PonentesController {

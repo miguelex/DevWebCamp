@@ -1,9 +1,9 @@
 <?php
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Classes\Email;
-use Model\Usuario;
+use App\Services\Email;
+use App\Models\Usuario;
 use MVC\Router;
 
 class AuthController {

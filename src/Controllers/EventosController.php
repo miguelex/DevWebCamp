@@ -1,13 +1,13 @@
 <?php
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Classes\Paginacion;
-use Model\Categoria;
-use Model\Dia;
-use Model\Evento;
-use Model\Hora;
-use Model\Ponente;
+use App\Helpers\Paginacion;
+use App\Models\Categoria;
+use App\Models\Dia;
+use App\Models\Evento;
+use App\Models\Hora;
+use App\Models\Ponente;
 use MVC\Router;
 
 class EventosController {

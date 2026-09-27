@@ -1,15 +1,15 @@
 <?php
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Model\Categoria;
-use Model\Dia;
-use Model\Evento;
-use Model\Hora;
-use Model\Paquete;
-use Model\Ponente;
-use Model\Registro;
-use Model\Usuario;
+use App\Models\Categoria;
+use App\Models\Dia;
+use App\Models\Evento;
+use App\Models\Hora;
+use App\Models\Paquete;
+use App\Models\Ponente;
+use App\Models\Registro;
+use App\Models\Usuario;
 use MVC\Router;
 
 class RegistroController

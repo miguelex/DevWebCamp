@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Core;
 
 use Dotenv\Dotenv;
-use Model\ActiveRecord;
 
 final class App
 {

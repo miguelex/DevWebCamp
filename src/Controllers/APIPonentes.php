@@ -1,8 +1,8 @@
 <?php 
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Model\Ponente;
+use App\Models\Ponente;
 
 class APIPonentes {
     public static function index() {

@@ -1,6 +1,8 @@
 <?php 
 
-namespace Model;
+namespace App\Models;
+
+use App\Core\ActiveRecord;
 
 class Categoria extends ActiveRecord {
     protected static $tabla = 'categorias';

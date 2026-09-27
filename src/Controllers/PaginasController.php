@@ -1,13 +1,13 @@
 <?php
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Model\Dia;
-use Model\Hora;
+use App\Models\Dia;
+use App\Models\Hora;
 use MVC\Router;
-use Model\Evento;
-use Model\Ponente;
-use Model\Categoria;
+use App\Models\Evento;
+use App\Models\Ponente;
+use App\Models\Categoria;
 
 class PaginasController
 {

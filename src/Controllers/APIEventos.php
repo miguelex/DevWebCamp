@@ -1,9 +1,9 @@
 <?php 
 
-namespace Controllers;
+namespace App\Controllers;
 
-use Model\EventoHorario;
-use Model\Ponente;
+use App\Models\EventoHorario;
+use App\Models\Ponente;
 
 class APIEventos {
     public static function index() {

@@ -1,6 +1,8 @@
 <?php 
 
-namespace Model;
+namespace App\Models;
+
+use App\Core\ActiveRecord;
 
 class Ponente extends ActiveRecord {
     protected static $tabla = 'ponentes';
