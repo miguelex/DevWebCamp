@@ -8,7 +8,7 @@ use App\Models\Dia;
 use App\Models\Evento;
 use App\Models\Hora;
 use App\Models\Ponente;
-use MVC\Router;
+use App\Core\Router;
 
 class EventosController {
     public static function index(Router $router) {

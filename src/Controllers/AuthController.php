@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 use App\Services\Email;
 use App\Models\Usuario;
-use MVC\Router;
+use App\Core\Router;
 
 class AuthController {
     public static function login(Router $router) {

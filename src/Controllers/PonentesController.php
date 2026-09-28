@@ -5,7 +5,7 @@ namespace App\Controllers;
 use App\Helpers\Paginacion;
 use Intervention\Image\ImageManagerStatic as Image;
 use App\Models\Ponente;
-use MVC\Router;
+use App\Core\Router;
 
 class PonentesController {
     public static function index(Router $router) {

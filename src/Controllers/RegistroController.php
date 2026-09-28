@@ -10,7 +10,7 @@ use App\Models\Paquete;
 use App\Models\Ponente;
 use App\Models\Registro;
 use App\Models\Usuario;
-use MVC\Router;
+use App\Core\Router;
 
 class RegistroController
 {

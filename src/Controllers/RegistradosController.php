@@ -2,7 +2,7 @@
 
 namespace App\Controllers;
 
-use MVC\Router;
+use App\Core\Router;
 
 class RegistradosController {
     public static function index(Router $router) {

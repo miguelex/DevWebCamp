@@ -1,6 +1,6 @@
 <?php
 
-namespace MVC;
+namespace App\Core;
 
 class Router
 {
@@ -17,7 +17,7 @@ class Router
         $this->postRoutes[$url] = $fn;
     }
 
-    public function comprobarRutas()
+    public function dispatch()
     {
 
         $url_actual = $_SERVER['PATH_INFO'] ?? '/';
@@ -44,7 +44,7 @@ class Router
 
         ob_start();
 
-        include_once __DIR__ . "/views/$view.php";
+        include_once BASE_PATH . "/views/$view.php";
 
         $contenido = ob_get_clean(); // Limpia el Buffer
 
@@ -53,10 +53,10 @@ class Router
         $url_actual = $_SERVER['PATH_INFO'] ?? '/';
 
         if (str_contains($url_actual, '/admin')) {
-            include_once __DIR__ . '/views/layout-admin.php';
+            include_once BASE_PATH . '/views/layouts/admin.php';
             return;
         }
 
-        include_once __DIR__ . '/views/layout.php';
+        include_once BASE_PATH . '/views/layouts/default.php';
     }
 }

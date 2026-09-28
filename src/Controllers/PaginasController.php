@@ -4,7 +4,7 @@ namespace App\Controllers;
 
 use App\Models\Dia;
 use App\Models\Hora;
-use MVC\Router;
+use App\Core\Router;
 use App\Models\Evento;
 use App\Models\Ponente;
 use App\Models\Categoria;

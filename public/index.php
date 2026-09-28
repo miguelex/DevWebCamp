@@ -7,7 +7,7 @@ define('BASE_PATH', dirname(__DIR__));
 require_once BASE_PATH . '/vendor/autoload.php';
 
 use App\Core\App;
-use MVC\Router;
+use App\Core\Router;
 
 App::boot();
 
@@ -15,4 +15,4 @@ $router = new Router();
 
 require BASE_PATH . '/config/routes.php';
 
-$router->comprobarRutas();
+$router->dispatch();
