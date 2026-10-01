@@ -1,0 +1,193 @@
+{
+    "database": {
+        "counts": {
+            "categorias": 2,
+            "dias": 2,
+            "eventos": 32,
+            "eventos_registros": 0,
+            "horas": 8,
+            "paquetes": 3,
+            "ponentes": 18,
+            "registros": 1,
+            "usuarios_devwebcamp": 2
+        },
+        "fixture_sha256": {
+            "usuarios_devwebcamp": "b833b17bc51f55314ffc2d6622d8d7feaa4430a6b04147e8f23464f93db17f05",
+            "registros": "b07a8a0298ae6ca1ead8003e706958d85744232842f973183b57e554d982af12",
+            "eventos_registros": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+    },
+    "models": {
+        "categoria_all_asc_ids_sha256": "cc3f2a1ffd63c4db19e0114b93a94b774e4a2d07a2a5ec5b193303ac1387d633",
+        "evento_ordenar_hora_asc_ids_sha256": "37f924e4baa526f756a3b5d65ad440e350894fa82d3e5f6d8c8ca2eccb9eb17e",
+        "evento_paginar_first_three_ids_sha256": "342e67343c84057a6d458eaeb9d66baa1c8f244838e77f570b92e2021b049df6",
+        "evento_total": "32",
+        "evento_total_by_categoria": "16",
+        "user_find_type": "string",
+        "user_confirmed_type": "string",
+        "user_admin_type": "string",
+        "user_where_matches_find": true,
+        "registration_find_id_type": "string",
+        "registration_package_id_type": "string",
+        "event_schedule_count": 8,
+        "event_schedule_first_id_type": "string",
+        "unused_get_outcome": "mysqli_sql_exception"
+    },
+    "http": {
+        "/": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "dd1f835afc7a32dbfce90f5992e1ed642b432395621d494fbeb125ccb79ec6ce"
+        },
+        "/devwebcamp": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "6d9055a83761b8615e271025da0ba839c305ff5e5d0989d7243f8d67228c0e03"
+        },
+        "/paquetes": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "5a1b3c05eefa71e1cc1c8088d0b056ba759e5983c7769099d368f75c65ace754"
+        },
+        "/workshops-conferencias": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "8ddbfdb5a56e16e650039363cb9e330ddcfe63cf3ee34f9ecb0103ee8436be38"
+        },
+        "/login": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "78348cbab8f783ab072d12d33db266d0ced9d8739dd25a9985c54ad0d2d5be44"
+        },
+        "/api/ponentes": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": null,
+            "json_shape": {
+                "root": "list",
+                "count": 18,
+                "first_field_types": {
+                    "id": "string",
+                    "nombre": "string",
+                    "apellido": "string",
+                    "ciudad": "string",
+                    "pais": "string",
+                    "imagen": "string",
+                    "tags": "string",
+                    "redes": "string"
+                }
+            },
+            "sha256": "843a741bf4e4158a6a26ad4048946e7c33c77fe518837e5bf05c68f4515790e2"
+        },
+        "/api/eventos-horario?dia_id=1&categoria_id=1": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": null,
+            "json_shape": {
+                "root": "list",
+                "count": 8,
+                "first_field_types": {
+                    "id": "string",
+                    "categoria_id": "string",
+                    "dia_id": "string",
+                    "hora_id": "string"
+                }
+            },
+            "sha256": "f1aa6096c38dff3059f40261be888f683d467e728d15fdd079f76f715198ffb0"
+        },
+        "/404": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "public",
+            "json_shape": null,
+            "sha256": "cbe6dc06f665f5b602916ebd980f39c9c745e68783ab3889fd00d92b1adbd64c"
+        },
+        "/port3-unregistered-route": {
+            "status": 302,
+            "content_type": "text/html",
+            "location": "/404",
+            "layout": null,
+            "json_shape": null,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "/admin/dashboard": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": "admin",
+            "json_shape": null,
+            "sha256": "f2dc1247a86d19b33c6ceea69e4a3f7c20a7582bfcefd10d139ba3cd1701962c"
+        },
+        "/admin/ponentes?page=1": {
+            "status": 302,
+            "content_type": "text/html",
+            "location": "/login",
+            "layout": "admin",
+            "json_shape": null,
+            "sha256": "870f045ffbdecab0c388053213c049f2205c6674835083b4942ea2e7eb728dc8"
+        },
+        "/admin/eventos?page=1": {
+            "status": 302,
+            "content_type": "text/html",
+            "location": "/login",
+            "layout": "admin",
+            "json_shape": null,
+            "sha256": "54f6b3283828dd5d57047e281e5ec62e14bb6204f37411f0bacec5f95f724dbb"
+        },
+        "/build/css/app.css": {
+            "status": 200,
+            "content_type": "text/css",
+            "location": null,
+            "layout": null,
+            "json_shape": null,
+            "sha256": "feecce7b64eef7e7c619f94e4e92827ee173670d56bd81dedba347daee7459f3"
+        },
+        "/build/js/main.min.js": {
+            "status": 200,
+            "content_type": "application/javascript",
+            "location": null,
+            "layout": null,
+            "json_shape": null,
+            "sha256": "26dc82efd3af52b925ddb9396a5f4f4f0a6653f11a95266c76a93779f76c1c5e"
+        },
+        "/api/ponente?id=1": {
+            "status": 200,
+            "content_type": "text/html",
+            "location": null,
+            "layout": null,
+            "json_shape": {
+                "root": "object",
+                "count": 8,
+                "first_field_types": {
+                    "id": "string",
+                    "nombre": "string",
+                    "apellido": "string",
+                    "ciudad": "string",
+                    "pais": "string",
+                    "imagen": "string",
+                    "tags": "string",
+                    "redes": "string"
+                }
+            },
+            "sha256": "8a3f79ecc9111057f80c8ee63463f4f8fe17dcb10a2510f9773dbe5c8568149f"
+        }
+    }
+}
