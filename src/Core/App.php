@@ -14,8 +14,6 @@ final class App
         Dotenv::createImmutable($envPath)->safeLoad();
 
         require_once BASE_PATH . '/src/Helpers/funciones.php';
-        require BASE_PATH . '/config/database.php';
-
-        ActiveRecord::setDB($db);
+        ActiveRecord::setDB(Database::connect());
     }
 }
