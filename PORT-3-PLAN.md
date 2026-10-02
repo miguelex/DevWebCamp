@@ -1,6 +1,6 @@
 # PORT-3: plan aprobado para migrar la persistencia a PDO
 
-> **Estado:** alcance aprobado; PORT-3 está «En curso». El bloque 1 de caracterización está autorizado y sus archivos están preparados en staging para revisión, pero todavía no se ha creado el commit. Los bloques posteriores requieren revisión independiente. No se autorizan cambios de esquema ni de los fixtures locales.
+> **Estado:** alcance aprobado; PORT-3 sigue «En curso» en Jira. Los bloques 1, 2, 3 y 4 están completados y commiteados; el bloque 5 está implementado y validado técnicamente, pendiente de revisión y commit. Los cuatro commits recientes permanecen en la rama local y todavía no se ha hecho push. No se autorizan cambios de esquema ni de los fixtures locales.
 >
 > **Referencia:** [PORT-3](https://miguelexd.atlassian.net/browse/PORT-3), dentro de PORT-1. La historia no contiene criterios de aceptación explícitos en Jira; los límites y requisitos aquí descritos fueron aprobados para este trabajo, sin atribuirlos al texto de Jira.
 
@@ -58,7 +58,7 @@ Los consumidores principales son `AuthController` (usuario), `RegistroController
 
 ## Bloques incrementales propuestos
 
-Cada bloque debe pasar sus verificaciones y poder revisarse/commitearse de forma independiente. El bloque 1 está autorizado y en curso; no se adelanta la implementación de los demás bloques.
+Cada bloque debe pasar sus verificaciones y poder revisarse/commitearse de forma independiente. Los bloques 1 a 4 están completados y commiteados; el bloque 5 está implementado y validado, pero aún requiere revisión independiente antes del commit.
 
 ### Bloque 1: caracterización del comportamiento actual
 
@@ -89,6 +89,8 @@ Cada bloque debe pasar sus verificaciones y poder revisarse/commitearse de forma
 - Probar inserción, actualización, eliminación, `lastInsertId` y fallos en una **BD desechable** con datos sintéticos. Usar una misma conexión PDO para transacción y ActiveRecord; hacer rollback y comprobar filas/conteos.
 - Repetir regresión HTTP acotada y comparar con el baseline. Mantener separados los defectos legacy y los cambios atribuibles a PORT-3.
 - **Validación:** pruebas estáticas, pruebas de lectura/escritura y revisión del diff completo antes de solicitar cierre.
+
+**Diferencias de driver aceptadas:** `get()` conserva su SQL inválido, pero pasa de `mysqli_sql_exception` a `PDOException`. Un fallo de conexión puede cambiar de clase de excepción y de cuerpo HTTP, sin exponer credenciales ni DSN. En escrituras reales bajo `mysqli` con modo estricto, los errores SQL podían lanzar `mysqli_sql_exception`; con `PDO::ERRMODE_EXCEPTION`, esos mismos errores lanzan `PDOException`. Esta diferencia de clase se acepta en PORT-3: la operación sigue fallando y no se exponen credenciales ni DSN. Cuando `execute()` o la operación no lanza una excepción, se conservan los retornos legacy aplicables. No se modifica código productivo para simular excepciones de `mysqli`.
 
 ## Estrategia de validación transversal
 
@@ -125,4 +127,4 @@ Inventario legacy conocido: interpolación `${var}` en `src/Core/ActiveRecord.ph
 2. Excluir repositorios, migraciones, CLI, seeders y cambios de esquema de PORT-3; mantener `Usuario` y reservar autenticación/autorización para PORT-4.
 3. Caracterizar los defectos existentes sin corregirlos incidentalmente. Si una prueba demuestra que alguno impide la equivalencia, **detenerse y consultar** antes de modificar su comportamiento.
 
-**Estado actual:** rama `PORT-3-migrar-modelos-y-persistencia-al-nuevo-activerecord-pdo`; Jira PORT-3 «En curso». Las pruebas y este plan están preparados en staging para revisión; todavía no se ha creado el commit. No se han modificado código productivo, esquema ni fixtures para el bloque 1. `.atl/` permanece fuera del staging y no se ha inspeccionado ni modificado.
+**Estado actual:** rama `PORT-3-migrar-modelos-y-persistencia-al-nuevo-activerecord-pdo`; Jira PORT-3 «En curso». Los bloques 1 a 4 están completados y commiteados (`813a19f`, `b8f7080`, `6d0d68b`, `de7bae2`); el bloque 5 está validado y pendiente de revisión/commit. Los cuatro commits recientes no se han enviado a origin. El bloque 1 no modificó código productivo, esquema ni fixtures. `.atl/` permanece fuera del staging y no se ha inspeccionado ni modificado.
