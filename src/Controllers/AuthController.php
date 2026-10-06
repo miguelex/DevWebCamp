@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Services\Email;
 use App\Models\Usuario;
 use App\Core\Router;
+use App\Core\Session;
 
 class AuthController {
     public static function login(Router $router) {
@@ -27,12 +28,13 @@ class AuthController {
                     if( password_verify($_POST['password'], $usuario->password) ) {
                         
                         // Iniciar la sesión
-                        session_start();    
-                        $_SESSION['id'] = $usuario->id;
-                        $_SESSION['nombre'] = $usuario->nombre;
-                        $_SESSION['apellido'] = $usuario->apellido;
-                        $_SESSION['email'] = $usuario->email;
-                        $_SESSION['admin'] = $usuario->admin ?? null;
+                        Session::login([
+                            'id' => $usuario->id,
+                            'nombre' => $usuario->nombre,
+                            'apellido' => $usuario->apellido,
+                            'email' => $usuario->email,
+                            'admin' => $usuario->admin ?? null,
+                        ]);
 
                         // Redireccionar
                         if( $usuario->admin) {
@@ -58,8 +60,7 @@ class AuthController {
 
     public static function logout() {
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
-            session_start();
-            $_SESSION = [];
+            Session::logout();
             header('Location: /');
         }
        
