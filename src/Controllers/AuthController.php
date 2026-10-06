@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Services\Email;
 use App\Models\Usuario;
 use App\Core\Router;
+use App\Core\Session;
 
 class AuthController {
     public static function login(Router $router) {
@@ -13,26 +14,28 @@ class AuthController {
 
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-            $usuario = new Usuario($_POST);
+            $usuario = new Usuario(array_intersect_key($_POST, array_flip(['email', 'password'])));
 
             $alertas = $usuario->validarLogin();
             
             if(empty($alertas)) {
                 // Verificar quel el usuario exista
+                $password = $usuario->password;
                 $usuario = Usuario::where('email', $usuario->email);
                 if(!$usuario || !$usuario->confirmado ) {
                     Usuario::setAlerta('error', 'El Usuario No Existe o no esta confirmado');
                 } else {
                     // El Usuario existe
-                    if( password_verify($_POST['password'], $usuario->password) ) {
+                    if( password_verify($password, $usuario->password) ) {
                         
                         // Iniciar la sesión
-                        session_start();    
-                        $_SESSION['id'] = $usuario->id;
-                        $_SESSION['nombre'] = $usuario->nombre;
-                        $_SESSION['apellido'] = $usuario->apellido;
-                        $_SESSION['email'] = $usuario->email;
-                        $_SESSION['admin'] = $usuario->admin ?? null;
+                        Session::login([
+                            'id' => $usuario->id,
+                            'nombre' => $usuario->nombre,
+                            'apellido' => $usuario->apellido,
+                            'email' => $usuario->email,
+                            'admin' => $usuario->admin ?? null,
+                        ]);
 
                         // Redireccionar
                         if( $usuario->admin) {
@@ -58,8 +61,7 @@ class AuthController {
 
     public static function logout() {
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
-            session_start();
-            $_SESSION = [];
+            Session::logout();
             header('Location: /');
         }
        
@@ -71,7 +73,9 @@ class AuthController {
 
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-            $usuario->sincronizar($_POST);
+            $usuario->sincronizar(array_intersect_key($_POST, array_flip([
+                'nombre', 'apellido', 'email', 'password', 'password2'
+            ])));
             
             $alertas = $usuario->validar_cuenta();
 
@@ -118,7 +122,7 @@ class AuthController {
         $alertas = [];
         
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $usuario = new Usuario($_POST);
+            $usuario = new Usuario(array_intersect_key($_POST, array_flip(['email'])));
             $alertas = $usuario->validarEmail();
 
             if(empty($alertas)) {
@@ -161,11 +165,14 @@ class AuthController {
 
     public static function reestablecer(Router $router) {
 
-        $token = s($_GET['token']);
+        $rawToken = $_GET['token'] ?? null;
+        if (!is_scalar($rawToken) || (string) $rawToken === '') {
+            header('Location: /');
+            return;
+        }
+        $token = s((string) $rawToken);
 
         $token_valido = true;
-
-        if(!$token) header('Location: /');
 
         // Identificar el usuario con este token
         $usuario = Usuario::where('token', $token);
@@ -173,13 +180,19 @@ class AuthController {
         if(empty($usuario)) {
             Usuario::setAlerta('error', 'Token No Válido, intenta de nuevo');
             $token_valido = false;
+            $router->render('auth/reestablecer', [
+                'titulo' => 'Reestablecer Password',
+                'alertas' => Usuario::getAlertas(),
+                'token_valido' => $token_valido
+            ]);
+            return;
         }
 
 
         if($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Añadir el nuevo password
-            $usuario->sincronizar($_POST);
+            $usuario->sincronizar(array_intersect_key($_POST, array_flip(['password'])));
 
             // Validar el password
             $alertas = $usuario->validarPassword();
@@ -220,9 +233,12 @@ class AuthController {
 
     public static function confirmar(Router $router) {
         
-        $token = s($_GET['token']);
-
-        if(!$token) header('Location: /');
+        $rawToken = $_GET['token'] ?? null;
+        if (!is_scalar($rawToken) || (string) $rawToken === '') {
+            header('Location: /');
+            return;
+        }
+        $token = s((string) $rawToken);
 
         // Encontrar al usuario con este token
         $usuario = Usuario::where('token', $token);

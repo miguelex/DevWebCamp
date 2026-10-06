@@ -9,11 +9,12 @@ use App\Models\Evento;
 use App\Models\Hora;
 use App\Models\Ponente;
 use App\Core\Router;
+use App\Core\AccessGuard;
 
 class EventosController {
     public static function index(Router $router) {
-        if(!is_admin()){
-            header("Location: /login");
+        if (!AccessGuard::administrator()) {
+            return;
         }
         $pagina_actual = $_GET['page'];
         $pagina_actual = filter_var($pagina_actual, FILTER_VALIDATE_INT);
@@ -45,11 +46,11 @@ class EventosController {
     }
 
     public static function crear(Router $router) {
+        if (!AccessGuard::administrator()) {
+            return;
+        }
 
         $alertas = [];
-        if(!is_admin()){
-            header("Location: /login");
-        }
 
         $categorias = Categoria::all('ASC');
         $dias = Dia::all('ASC');
@@ -58,9 +59,6 @@ class EventosController {
         $evento = new Evento;
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            if(!is_admin()){
-                header("Location: /login");
-            }
             $evento->sincronizar($_POST);
             $alertas = $evento->validar();
 
@@ -85,8 +83,8 @@ class EventosController {
     }
 
     public static function editar(Router $router) {
-        if(!is_admin()){
-            header("Location: /login");
+        if (!AccessGuard::administrator()) {
+            return;
         }
         $alertas = [];
         
@@ -108,9 +106,6 @@ class EventosController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            if(!is_admin()){
-                header("Location: /login");
-            }
             $evento->sincronizar($_POST);
             $alertas = $evento->validar();
 
@@ -135,11 +130,11 @@ class EventosController {
     }
 
     public static function eliminar() {
-        
+        if (!AccessGuard::administrator()) {
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if(!is_admin()){
-                header("Location: /login");
-            }
             $id = $_POST['id'];
             $id = filter_var($id, FILTER_VALIDATE_INT);
 

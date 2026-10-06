@@ -11,14 +11,15 @@ use App\Models\Ponente;
 use App\Models\Registro;
 use App\Models\Usuario;
 use App\Core\Router;
+use App\Core\AccessGuard;
 
 class RegistroController
 {
 
     public static function crear(Router $router)
     {
-        if (!is_auth()) {
-            header('Location: /login');
+        if (!AccessGuard::authenticated()) {
+            return;
         }
 
         // Verificar si el usaurio ya esta registrado
@@ -36,10 +37,10 @@ class RegistroController
 
     public static function gratis(Router $router)
     {
+        if (!AccessGuard::authenticated()) {
+            return;
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!is_auth()) {
-                header('Location: /login');
-            }
 
             // Verificar si el usaurio ya esta registrado
             $registro = Registro::where('usuario_id', $_SESSION['id']);
@@ -96,10 +97,10 @@ class RegistroController
 
     public static function pagar(Router $router)
     {
+        if (!AccessGuard::authenticated()) {
+            return;
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (!is_auth()) {
-                header('Location: /login');
-            }
 
             // Validar que post n ovenga vacio
             if (empty($_POST)) {
@@ -133,16 +134,17 @@ class RegistroController
 
     public static function conferencias(Router $router)
     {
-        if (!is_auth()) {
-            header('Location: /login');
+        if (!AccessGuard::authenticated()) {
+            return;
         }
 
         // Validar que tenga el plan presnecial
 
         $usuario_id = $_SESSION['id'];
         $registro = Registro::where('usuario_id', $usuario_id);
-        if ($registro->paquete_id != 1) {
+        if (!$registro || $registro->paquete_id != 1) {
             header('Location: /');
+            return;
         }
 
         $eventos = Evento::ordenar('hora_id', 'ASC');

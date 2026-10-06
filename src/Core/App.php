@@ -13,6 +13,7 @@ final class App
         $envPath = is_file(BASE_PATH . '/.env') ? BASE_PATH : BASE_PATH . '/includes';
         Dotenv::createImmutable($envPath)->safeLoad();
 
+        Session::start();
         require_once BASE_PATH . '/src/Helpers/funciones.php';
         ActiveRecord::setDB(Database::connect());
     }
