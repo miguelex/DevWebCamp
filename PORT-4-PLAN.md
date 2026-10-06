@@ -1,6 +1,6 @@
 # PORT-4: autenticación y autorización
 
-> **Estado:** PORT-4 «En curso» en Jira. La rama `PORT-4-adaptar-autenticacion-y-autorizacion-al-nuevo-sistema` parte de `main` en `d4e9168` y está publicada. Bloque 1 completado y commiteado en `75d383f`; bloque 2 completado y commiteado en `f5132cc`; bloques 3–5 pendientes.
+> **Estado:** PORT-4 «En curso» en Jira. La rama `PORT-4-adaptar-autenticacion-y-autorizacion-al-nuevo-sistema` parte de `main` en `d4e9168` y está publicada. Bloque 1 completado y commiteado en `75d383f`; bloque 2 completado y commiteado en `f5132cc`; bloque 3 completado y commiteado en `1eb5a17`; bloque 4 en implementación; bloque 5 pendiente.
 >
 > **Fuente:** [PORT-4](https://miguelexd.atlassian.net/browse/PORT-4), hija de PORT-1. Jira solo contiene el título «Adaptar autenticación y autorización al nuevo sistema»: no hay descripción ni criterios de aceptación. Este plan recoge el alcance propuesto y aprobado por el usuario; no atribuye estos detalles a Jira.
 

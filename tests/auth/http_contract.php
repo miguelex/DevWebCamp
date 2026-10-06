@@ -136,25 +136,27 @@ try {
     }
     assertHttp($ready, 'isolated local HTTP server ready');
 
+    // Before block 4: anonymous dashboard returned 200/admin HTML, and denied POST
+    // could replace /login with /admin/*. These defects now require 302 /login/no HTML.
     $cases = [
-        ['anonymous dashboard defect', '/admin/dashboard', 'GET', null, 200, null, true],
-        ['anonymous registered list defect', '/admin/registrados', 'GET', null, 200, null, true],
-        ['anonymous gifts defect', '/admin/regalos', 'GET', null, 200, null, true],
-        ['anonymous speakers list still renders admin body', '/admin/ponentes?page=1', 'GET', null, 302, '/login', true],
-        ['anonymous events list still renders admin body', '/admin/eventos?page=1', 'GET', null, 302, '/login', true],
-        ['normal dashboard defect', '/admin/dashboard', 'GET', $normalCookie, 200, null, true],
-        ['normal speakers list still renders admin body', '/admin/ponentes?page=1', 'GET', $normalCookie, 302, '/login', true],
-        ['normal events list still renders admin body', '/admin/eventos?page=1', 'GET', $normalCookie, 302, '/login', true],
+        ['anonymous dashboard denial', '/admin/dashboard', 'GET', null, 302, '/login', false],
+        ['anonymous registered list denial', '/admin/registrados', 'GET', null, 302, '/login', false],
+        ['anonymous gifts denial', '/admin/regalos', 'GET', null, 302, '/login', false],
+        ['anonymous speakers list denial', '/admin/ponentes?page=1', 'GET', null, 302, '/login', false],
+        ['anonymous events list denial', '/admin/eventos?page=1', 'GET', null, 302, '/login', false],
+        ['normal dashboard denial', '/admin/dashboard', 'GET', $normalCookie, 302, '/login', false],
+        ['normal speakers list denial', '/admin/ponentes?page=1', 'GET', $normalCookie, 302, '/login', false],
+        ['normal events list denial', '/admin/eventos?page=1', 'GET', $normalCookie, 302, '/login', false],
         ['admin dashboard', '/admin/dashboard', 'GET', $adminCookie, 200, null, true],
         ['admin speakers list', '/admin/ponentes?page=1', 'GET', $adminCookie, 200, null, true],
         ['admin events list', '/admin/eventos?page=1', 'GET', $adminCookie, 200, null, true],
-        ['anonymous POST redirect override defect', '/admin/ponentes/eliminar', 'POST', null, 302, '/admin/ponentes', false],
-        ['normal POST redirect override defect', '/admin/ponentes/eliminar', 'POST', $normalCookie, 302, '/admin/ponentes', false],
+        ['anonymous POST redirect preserved', '/admin/ponentes/eliminar', 'POST', null, 302, '/login', false],
+        ['normal POST redirect preserved', '/admin/ponentes/eliminar', 'POST', $normalCookie, 302, '/login', false],
         ['admin POST invalid id', '/admin/ponentes/eliminar', 'POST', $adminCookie, 302, '/admin/ponentes', false],
-        ['anonymous event POST redirect override defect', '/admin/eventos/eliminar', 'POST', null, 302, '/admin/eventos', false],
+        ['anonymous event POST redirect preserved', '/admin/eventos/eliminar', 'POST', null, 302, '/login', false],
         ['admin event POST invalid id', '/admin/eventos/eliminar', 'POST', $adminCookie, 302, '/admin/eventos', false],
         ['anonymous registration redirect', '/finalizar-registro', 'GET', null, 302, '/login', false],
-        ['anonymous conference redirect defect', '/finalizar-registro/conferencias', 'GET', null, 302, '/', false],
+        ['anonymous conference redirect corrected', '/finalizar-registro/conferencias', 'GET', null, 302, '/login', false],
         ['normal conferences', '/finalizar-registro/conferencias', 'GET', $normalCookie, 200, null, false],
         ['forgot-password form', '/olvide', 'GET', null, 200, null, false],
     ];

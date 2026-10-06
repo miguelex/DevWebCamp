@@ -6,9 +6,13 @@ use App\Helpers\Paginacion;
 use Intervention\Image\ImageManagerStatic as Image;
 use App\Models\Ponente;
 use App\Core\Router;
+use App\Core\AccessGuard;
 
 class PonentesController {
     public static function index(Router $router) {
+        if (!AccessGuard::administrator()) {
+            return;
+        }
 
         $pagina_actual = $_GET["page"];
         $pagina_actual = filter_var($pagina_actual, FILTER_VALIDATE_INT);
@@ -27,9 +31,6 @@ class PonentesController {
 
         $ponentes = Ponente::paginar($registros_por_pagina, $paginacion->offset());
 
-        if(!is_admin()){
-            header("Location: /login");
-        }
         // Render a la vista 
         $router->render('admin/ponentes/index', [
             'titulo' => 'Ponentes',
@@ -39,8 +40,8 @@ class PonentesController {
     }
 
     public static function crear(Router $router) {
-        if(!is_admin()){
-            header("Location: /login");
+        if (!AccessGuard::administrator()) {
+            return;
         }
         $alertas = [];
 
@@ -97,8 +98,8 @@ class PonentesController {
     }
 
     public static function editar(Router $router) {
-        if(!is_admin()){
-            header("Location: /login");
+        if (!AccessGuard::administrator()) {
+            return;
         }
         $alertas = [];
 
@@ -174,8 +175,8 @@ class PonentesController {
     }
 
     public static function eliminar() {
-        if(!is_admin()){
-            header("Location: /login");
+        if (!AccessGuard::administrator()) {
+            return;
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
