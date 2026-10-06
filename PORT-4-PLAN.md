@@ -1,6 +1,6 @@
 # PORT-4: autenticación y autorización
 
-> **Estado:** PORT-4 «En curso» en Jira. La rama `PORT-4-adaptar-autenticacion-y-autorizacion-al-nuevo-sistema` parte de `main` en `d4e9168` y está publicada. Bloque 1 completado y commiteado en `75d383f`; bloque 2 completado y commiteado en `f5132cc`; bloque 3 completado y commiteado en `1eb5a17`; bloque 4 en implementación; bloque 5 pendiente.
+> **Estado:** PORT-4 «En curso» en Jira. La rama `PORT-4-adaptar-autenticacion-y-autorizacion-al-nuevo-sistema` parte de `main` en `d4e9168` y está publicada. Bloque 1 completado y commiteado en `75d383f`; bloque 2 completado y commiteado en `f5132cc`; bloque 3 completado y commiteado en `1eb5a17`; bloque 4 completado y commiteado en `5507424`; bloque 5 completado técnicamente.
 >
 > **Fuente:** [PORT-4](https://miguelexd.atlassian.net/browse/PORT-4), hija de PORT-1. Jira solo contiene el título «Adaptar autenticación y autorización al nuevo sistema»: no hay descripción ni criterios de aceptación. Este plan recoge el alcance propuesto y aprobado por el usuario; no atribuye estos detalles a Jira.
 
@@ -52,6 +52,16 @@ El boleto por token y otras reglas de inscripción merecen verificación de auto
 5. **Regresión y cierre técnico.** Repetir pruebas de auth, baseline PDO/HTTP, fixtures, rutas públicas/API/admin y revisión integral del diff. Documentar compatibilidad temporal y deuda residual; la regresión integral sigue reservada a PORT-9.
 
 Cada bloque se revisa y valida de forma independiente antes de commitearlo. No se implementa el siguiente bloque automáticamente.
+
+## Cierre técnico del bloque 5
+
+Los contratos de los cuatro bloques pasan conjuntamente: caracterización de autenticación, ciclo de sesión, ciclo de cuenta y autorización. También pasan el contrato PDO, el smoke HTTP de rutas públicas, API, administración, `/404`, ruta desconocida y assets, `php -l` de los 78 PHP versionados, autoload, `composer validate` y `git diff --check`. `composer.lock` permanece idéntico a `main`. La base local conserva 2 usuarios, 1 inscripción y 0 relaciones de eventos; las huellas de fixtures coinciden con el baseline. Las bases desechables de cuenta y guards quedan sin filas tras los rollbacks.
+
+El snapshot PDO/HTTP histórico de PORT-3 se conserva intacto y, por diseño, ya no pasa su comparación estricta: las únicas diferencias son los GET anónimos `/admin/dashboard`, `/admin/ponentes?page=1` y `/admin/eventos?page=1`, que ahora redirigen a `/login` sin contenido administrativo. Datos, modelos, rutas públicas, API y assets siguen coincidiendo. El contrato HTTP de PORT-4 registra además la corrección explícita de accesos anónimos a otros recursos admin, redirecciones sobrescritas y continuación tras denegación; esas salidas inseguras no son contratos de compatibilidad.
+
+El diff acumulado de PORT-4 frente a `main` limita el código productivo a sesión y logout, allowlists y validación de tokens del ciclo de cuenta, y guards con retorno inmediato. No modifica Router, persistencia, esquema, frontend, pagos, servicio de correo, uploads ni formato o caducidad de tokens. Las cinco claves legacy de sesión permanecen disponibles para sus consumidores.
+
+**Deuda fuera de PORT-4:** defectos propios de `/boleto`; redirects que continúan tras una inscripción ya existente; login positivo HTTP integral no repetido (sí comprobado mediante el controlador); CRUD administrativo positivo completo; pagos; correos reales; uploads; infraestructura general de tests de PORT-6 y regresión funcional integral de PORT-9. El token legacy generado mediante `uniqid()` y sin caducidad se conserva deliberadamente: cambiarlo requiere una decisión separada. Ninguno de estos puntos se corrige en el bloque 5.
 
 ## Ejecutar el bloque 1
 
