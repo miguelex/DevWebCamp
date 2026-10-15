@@ -16,5 +16,12 @@
         "phpmailer/phpmailer": "^6.5",
         "vlucas/phpdotenv": "^5.4",
         "intervention/image": "^2.7"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2"
+    },
+    "scripts": {
+        "stan": "phpstan analyse --configuration=phpstan.neon --no-progress",
+        "lint:syntax": "@php scripts/lint-php.php"
     }
 }

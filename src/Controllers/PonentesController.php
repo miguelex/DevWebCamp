@@ -48,6 +48,7 @@ class PonentesController {
         $ponente = new Ponente;
 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            unset($_POST['imagen']);
             //Leer imagen
 
             if(!empty($_FILES['imagen']['tmp_name'])) {
@@ -73,7 +74,7 @@ class PonentesController {
 
             // Guardar el registro
 
-            if (empty($alertas)) {
+            if (empty($alertas) && isset($imagen_png, $imagen_webp, $carpeta_imagen, $nombre_imagen)) {
                 // Guardar las imagenes
                 $imagen_png->save($carpeta_imagen . '/'. $nombre_imagen . ".png");
                 $imagen_webp->save($carpeta_imagen . '/'. $nombre_imagen . ".webp");
@@ -103,17 +104,18 @@ class PonentesController {
         }
         $alertas = [];
 
-        $id = $_GET['id'];
-        $id = filter_var($id, FILTER_VALIDATE_INT);
+        $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT);
 
         if(!$id) {
             header('Location: /admin/ponentes');
+            return;
         }
 
         $ponente = Ponente::find($id);
 
-        if (!$ponente) {
+        if (!($ponente instanceof Ponente)) {
             header('Location: /admin/ponentes');
+            return;
         }
 
         $ponente->imagen_actual = $ponente->imagen;
@@ -142,6 +144,7 @@ class PonentesController {
             }
 
             $_POST['redes'] = json_encode($_POST['redes'], JSON_UNESCAPED_SLASHES);
+            unset($_POST['imagen_actual']);
 
             $ponente->sincronizar($_POST);
             $alertas = $ponente->validar();
@@ -149,7 +152,7 @@ class PonentesController {
             // Guardar el registro
 
             if (empty($alertas)) {
-                if (isset($nombre_imagen)) {
+                if (isset($nombre_imagen, $carpeta_imagen, $imagen_png, $imagen_webp)) {
                     // Guardar las imagenes
                     $imagen_png->save($carpeta_imagen . '/'. $nombre_imagen . ".png");
                     $imagen_webp->save($carpeta_imagen . '/'. $nombre_imagen . ".webp");

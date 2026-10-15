@@ -1,0 +1,20 @@
+parameters:
+    level: 2
+    phpVersion: 80200
+    paths:
+        - src
+    bootstrapFiles:
+        - phpstan-bootstrap.php
+    ignoreErrors:
+        -
+            rawMessage: 'Access to an undefined property App\Models\Ponente::$imagen_actual.'
+            identifier: property.notFound
+            path: src/Controllers/PonentesController.php
+            count: 1
+        # All current models declare id; ActiveRecord relies on this legacy contract.
+        # Declaring id in the base changes runtime contracts; this cannot enforce it for future models.
+        -
+            rawMessage: 'Access to an undefined property App\Core\ActiveRecord::$id.'
+            identifier: property.notFound
+            path: src/Core/ActiveRecord.php
+            count: 3
