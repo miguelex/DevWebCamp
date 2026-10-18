@@ -1,5 +1,4 @@
 node_modules/
 /.env
 includes/.env
-src/img/
 vendor/
