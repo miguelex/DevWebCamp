@@ -3,3 +3,10 @@ CREATE TABLE categorias (
     nombre VARCHAR(45) DEFAULT NULL,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+
+CREATE TABLE usuarios_devwebcamp (
+    id INT NOT NULL AUTO_INCREMENT,
+    confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    admin TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;

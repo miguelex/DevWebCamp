@@ -35,7 +35,7 @@ final class CategoriaWritesTest extends TestCase
     {
         $config = IntegrationConfig::fromEnvironment();
         $db = IntegrationDatabase::connect($config, $config->database);
-        self::assertSame(['categorias'], $db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN));
+        self::assertSame(['categorias', 'usuarios_devwebcamp'], $db->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN));
         $before = $this->snapshot($db);
         self::assertSame(0, $before[0]);
 

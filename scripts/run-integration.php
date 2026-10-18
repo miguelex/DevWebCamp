@@ -38,7 +38,11 @@ try {
     if ($schema === false) {
         throw new RuntimeException('The integration schema is missing.');
     }
-    $target->exec($schema);
+    foreach (explode(';', $schema) as $statement) {
+        if (trim($statement) !== '') {
+            $target->exec($statement);
+        }
+    }
 
     $command = [PHP_BINARY, dirname(__DIR__) . '/vendor/bin/phpunit',
         '--configuration', dirname(__DIR__) . '/phpunit.xml', '--testsuite', 'Integration'];
@@ -49,7 +53,8 @@ try {
     $result = proc_close($process);
 
     if ($target->query('SELECT DATABASE()')->fetchColumn() !== $config->database
-        || (int) $target->query('SELECT COUNT(*) FROM categorias')->fetchColumn() !== 0) {
+        || (int) $target->query('SELECT COUNT(*) FROM categorias')->fetchColumn() !== 0
+        || (int) $target->query('SELECT COUNT(*) FROM usuarios_devwebcamp')->fetchColumn() !== 0) {
         throw new RuntimeException('The integration database contains residual rows.');
     }
     echo "Integration database contains no residual rows.\n";
