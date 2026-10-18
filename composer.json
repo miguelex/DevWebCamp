@@ -24,6 +24,7 @@
     "scripts": {
         "stan": "phpstan analyse --configuration=phpstan.neon --no-progress",
         "lint:syntax": "@php scripts/lint-php.php",
-        "test": "@php vendor/bin/phpunit --configuration phpunit.xml"
+        "test": "@php vendor/bin/phpunit --configuration phpunit.xml --testsuite Unit",
+        "test:integration": "@php scripts/run-integration.php"
     }
 }
