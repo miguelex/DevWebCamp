@@ -61,7 +61,17 @@ final class PdoConnectionTest extends TestCase
 
             $db->beginTransaction();
             try {
-                $db->exec('INSERT INTO usuarios_devwebcamp (confirmado, admin) VALUES (1, 0)');
+                $insert = $db->prepare(
+                    'INSERT INTO usuarios_devwebcamp '
+                    . '(nombre, apellido, email, password, confirmado, admin) '
+                    . 'VALUES (?, ?, ?, ?, 1, 0)'
+                );
+                $insert->execute([
+                    'Synthetic',
+                    'Connection',
+                    'pdo-' . bin2hex(random_bytes(4)) . '@example.invalid',
+                    'synthetic-unused-hash',
+                ]);
                 $id = (int) $db->lastInsertId();
                 self::assertGreaterThan(0, $id);
                 $stringified = $this->fixtureRow($db, $id);

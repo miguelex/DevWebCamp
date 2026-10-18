@@ -6,7 +6,12 @@ CREATE TABLE categorias (
 
 CREATE TABLE usuarios_devwebcamp (
     id INT NOT NULL AUTO_INCREMENT,
+    nombre VARCHAR(100) NOT NULL,
+    apellido VARCHAR(100) NOT NULL,
+    email VARCHAR(191) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     confirmado TINYINT(1) NOT NULL DEFAULT 0,
+    token VARCHAR(64) NOT NULL DEFAULT '',
     admin TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
