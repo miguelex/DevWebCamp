@@ -102,3 +102,32 @@ jobs:
 
       - name: Run integration tests
         run: composer test:integration
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Verify committed frontend assets
+        run: |
+          if [ -n "$(git status --porcelain --untracked-files=all -- public/build)" ]; then
+            echo "public/build differs from the committed assets:"
+            git status --short --untracked-files=all -- public/build
+            exit 1
+          fi
