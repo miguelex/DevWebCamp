@@ -17,7 +17,9 @@ final class Database
         $username = $_ENV['DB_USER'] ?? '';
         $password = $_ENV['DB_PASS'] ?? '';
 
-        $dsn = "mysql:host={$host};dbname={$database};charset=utf8mb4";
+        $port = $_ENV['DB_PORT'] ?? '';
+        $dsn = "mysql:host={$host}" . ($port !== '' ? ";port={$port}" : '')
+            . ";dbname={$database};charset=utf8mb4";
 
         try {
             return new PDO($dsn, $username, $password, [
