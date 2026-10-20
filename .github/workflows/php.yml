@@ -50,3 +50,55 @@ jobs:
 
       - name: Run unit tests
         run: composer test
+
+  integration:
+    name: PHP integration tests
+    runs-on: ubuntu-24.04
+    env:
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: '3306'
+      TEST_DB_NAME: devwebcamp_port6_test_00000001
+      TEST_DB_USER: root
+      TEST_DB_PASS: ci-only-mysql
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-mysql
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --protocol=tcp --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-start-period=30s
+          --health-retries=12
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, fileinfo, mbstring, pdo_mysql, xmlwriter
+          tools: composer:v2
+          coverage: none
+
+      - name: Locate Composer download cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php82-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run integration tests
+        run: composer test:integration
