@@ -1,0 +1,133 @@
+name: PHP
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  php-quality:
+    name: PHP quality and unit tests
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, fileinfo, mbstring, xmlwriter
+          tools: composer:v2
+          coverage: none
+
+      - name: Locate Composer download cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php82-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Validate Composer metadata
+        run: composer validate --no-check-publish
+
+      - name: Lint PHP syntax
+        run: composer lint:syntax
+
+      - name: Run PHPStan
+        run: composer stan
+
+      - name: Run unit tests
+        run: composer test
+
+  integration:
+    name: PHP integration tests
+    runs-on: ubuntu-24.04
+    env:
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: '3306'
+      TEST_DB_NAME: devwebcamp_port6_test_00000001
+      TEST_DB_USER: root
+      TEST_DB_PASS: ''
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --protocol=tcp --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-start-period=30s
+          --health-retries=12
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, fileinfo, mbstring, pdo_mysql, xmlwriter
+          tools: composer:v2
+          coverage: none
+
+      - name: Locate Composer download cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php82-${{ hashFiles('composer.lock') }}
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run integration tests
+        run: composer test:integration
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Verify committed frontend assets
+        run: |
+          if [ -n "$(git status --porcelain --untracked-files=all -- public/build)" ]; then
+            echo "public/build differs from the committed assets:"
+            git status --short --untracked-files=all -- public/build
+            exit 1
+          fi
