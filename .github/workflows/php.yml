@@ -59,13 +59,13 @@ jobs:
       TEST_DB_PORT: '3306'
       TEST_DB_NAME: devwebcamp_port6_test_00000001
       TEST_DB_USER: root
-      TEST_DB_PASS: ci-only-mysql
+      TEST_DB_PASS: ''
 
     services:
       mysql:
         image: mysql:8.4
         env:
-          MYSQL_ROOT_PASSWORD: ci-only-mysql
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         ports:
           - 3306:3306
         options: >-
