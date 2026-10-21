@@ -39,3 +39,35 @@ runner from reaching the registration and recovery flows. No production mail cod
 The lifecycle server discards its own stderr access log because token-bearing URLs would
 otherwise be recorded there; the runner reports token-free failure labels instead.
 The runner does not follow login into ticketing, payment, or event-registration pages.
+
+## Administrative CRUD (PORT-9 block 4)
+
+Run `php scripts/run-http-crud.php` with the same disposable `TEST_DB_*` configuration.
+This opt-in runner adds only the columns/tables in `crud-schema.sql` to its private database:
+`eventos`, `ponentes`, `categorias`, `dias`, and `horas`. It seeds one speaker, one event,
+and one row in each catalog. IDs are captured from the database; the existing smoke event
+retains ID 1 solely for the prior runner's API contract. No foreign keys or cascades are
+defined by this functional schema, and it does **not** describe production DDL. The test
+deletes its created event before its created speaker and checks that all rows return to the
+initial snapshot.
+
+The speaker controller's `../public/img/speakers/` path is relative to its process CWD.
+For this runner only, a generated router changes CWD to `<temporary>/runtime` before
+loading the real front controller. The relative destination then resolves to
+`<temporary>/public/img/speakers`; PHP's upload temp path, sessions, router, and logs also
+remain under that private temporary tree. The test-only router loads `ImageGuard.php` only for this
+server. It rejects any input other than the exact synthetic 1×1 PNG, checks the controller's
+800×800 PNG/WebP calls, and refuses to save anywhere except the isolated destination.
+It writes deterministic valid PNG/WebP fixtures because the host PHP runtime lacks GD and
+Imagick. This tests HTTP upload wiring, DB writes, path isolation, and legacy file retention;
+it does **not** test Intervention Image's real resize/encoding or browser image rendering.
+The runner verifies both files after create/edit/delete. Legacy delete removes only the DB
+row; harness cleanup removes the two temporary files in `finally`.
+The legacy `ActiveRecord::crear()` prepends a space to the first bound value; this runner
+asserts that observed INSERT behavior and verifies UPDATE removes it, without changing
+production persistence code.
+
+The event POST supplies complete backend fields directly. It does not simulate the hidden
+day/hour/speaker inputs populated by `src/js/horas.js` and `src/js/ponentes.js`, nor does it
+validate frontend interactions, responsive presentation, production uploads, ticketing,
+conference registration, checkout, PayPal, or any external call.

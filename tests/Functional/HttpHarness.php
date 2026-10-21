@@ -22,10 +22,12 @@ final class HttpHarness
     private string $baseUrl = '';
     private array $fixtures = [];
     private array $initialRows = [];
+    private int $requests = 0;
 
     public function __construct(
         private readonly IntegrationConfig $config,
         private readonly bool $blockMail = false,
+        private readonly bool $crud = false,
     ) {}
 
     /** @param callable(self): void $checks */
@@ -85,6 +87,9 @@ final class HttpHarness
             }
         }
         $this->seedUsers();
+        if ($this->crud) {
+            $this->seedCrudFixture();
+        }
         $this->initialRows = $this->rows();
         $this->assertSyntheticFixture();
     }
@@ -116,12 +121,79 @@ final class HttpHarness
     /** @return array<string, array<int, array<string, mixed>>> */
     private function rows(): array
     {
-        return [
+        $rows = [
             'eventos' => $this->appDb->query('SELECT * FROM eventos ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
             'usuarios_devwebcamp' => $this->appDb->query(
                 'SELECT * FROM usuarios_devwebcamp ORDER BY id'
             )->fetchAll(PDO::FETCH_ASSOC),
         ];
+        if ($this->crud) {
+            foreach (['categorias', 'dias', 'horas', 'ponentes'] as $table) {
+                $rows[$table] = $this->appDb->query("SELECT * FROM {$table} ORDER BY id")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+        return $rows;
+    }
+
+    private function seedCrudFixture(): void
+    {
+        $schema = file_get_contents(__DIR__ . '/crud-schema.sql');
+        if ($schema === false) {
+            throw new RuntimeException('CRUD-only schema is missing.');
+        }
+        foreach (explode(';', $schema) as $statement) {
+            if (trim($statement) !== '') {
+                $this->appDb->exec($statement);
+            }
+        }
+        $this->appDb->exec("INSERT INTO categorias (nombre) VALUES ('Synthetic Category')");
+        $this->fixtures['categoria_id'] = (int) $this->appDb->lastInsertId();
+        $this->appDb->exec("INSERT INTO dias (nombre) VALUES ('Synthetic Day')");
+        $this->fixtures['dia_id'] = (int) $this->appDb->lastInsertId();
+        $this->appDb->exec("INSERT INTO horas (hora) VALUES ('09:00')");
+        $this->fixtures['hora_id'] = (int) $this->appDb->lastInsertId();
+        $this->appDb->exec("INSERT INTO ponentes (nombre, apellido, ciudad, pais, imagen, tags, redes)"
+            . " VALUES ('Fixture', 'Speaker', 'Test City', 'Test Country', 'fixture-image', 'PHP', '{}')");
+        $this->fixtures['ponente_id'] = (int) $this->appDb->lastInsertId();
+        $baseEventId = $this->appDb->query('SELECT id FROM eventos')->fetchColumn();
+        if ($baseEventId === false) {
+            throw new RuntimeException('Base synthetic event is missing.');
+        }
+        $this->fixtures['base_event_id'] = (int) $baseEventId;
+        $update = $this->appDb->prepare('UPDATE eventos SET nombre = ?, descripcion = ?, disponibles = ?, '
+            . 'categoria_id = ?, dia_id = ?, hora_id = ?, ponente_id = ? WHERE id = ?');
+        $update->execute(['Fixture Event', 'Synthetic fixture', 10, $this->fixtures['categoria_id'],
+            $this->fixtures['dia_id'], $this->fixtures['hora_id'], $this->fixtures['ponente_id'],
+            $this->fixtures['base_event_id']]);
+    }
+
+    public function crudId(string $name): int
+    {
+        if (!$this->crud || !isset($this->fixtures[$name]) || !is_int($this->fixtures[$name])) {
+            throw new RuntimeException('Unknown CRUD fixture ID.');
+        }
+        return $this->fixtures[$name];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function tableRows(string $table): array
+    {
+        if (!$this->crud || !in_array($table, ['eventos', 'ponentes', 'categorias', 'dias', 'horas'], true)
+            || $this->appDb === null) {
+            throw new RuntimeException('CRUD table is unavailable.');
+        }
+        return $this->appDb->query("SELECT * FROM {$table} ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function requestCount(): int { return $this->requests; }
+
+    public function speakerFiles(): array
+    {
+        if (!$this->crud) {
+            throw new RuntimeException('CRUD filesystem is unavailable.');
+        }
+        return glob($this->temporaryDirectory . '/public/img/speakers/*') ?: [];
     }
 
     /** @return array{id: int, email: string, password: string, admin: int} */
@@ -186,6 +258,14 @@ final class HttpHarness
 
     private function assertSyntheticFixture(): void
     {
+        if ($this->crud) {
+            if ($this->appDb === null || $this->appDb->query('SELECT DATABASE()')->fetchColumn()
+                !== $this->config->database || $this->rows() !== $this->initialRows
+                || count($this->initialRows['usuarios_devwebcamp'] ?? []) !== 3) {
+                throw new RuntimeException('CRUD synthetic fixture identity mismatch.');
+            }
+            return;
+        }
         if ($this->appDb === null
             || $this->appDb->query('SELECT DATABASE()')->fetchColumn() !== $this->config->database
             || $this->appDb->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN)
@@ -236,11 +316,32 @@ final class HttpHarness
             'DB_USER' => $this->config->user,
             'DB_PASS' => $this->config->password,
         ]);
+        if ($this->crud) {
+            $environment['PORT9_SPEAKER_DIRECTORY'] = $this->temporaryDirectory . '/public/img/speakers';
+        }
         $root = dirname(__DIR__, 2);
+        if ($this->crud) {
+            if (!mkdir($this->temporaryDirectory . '/runtime', 0700)
+                || !mkdir($this->temporaryDirectory . '/public/img/speakers', 0700, true)) {
+                throw new RuntimeException('Cannot create isolated CRUD filesystem.');
+            }
+            $router = $this->temporaryDirectory . '/router.php';
+            $code = '<?php require_once ' . var_export(__DIR__ . '/ImageGuard.php', true)
+                . '; $_SERVER[\'PATH_INFO\'] = parse_url($_SERVER[\'REQUEST_URI\'], PHP_URL_PATH); '
+                . 'chdir(' . var_export($this->temporaryDirectory . '/runtime', true)
+                . '); require ' . var_export($root . '/public/index.php', true) . ';';
+            if (file_put_contents($router, $code) === false) {
+                throw new RuntimeException('Cannot create test-only router.');
+            }
+        }
         $command = [PHP_BINARY, '-d', 'variables_order=EGPCS',
             '-d', 'session.save_path=' . $this->temporaryDirectory . '/sessions',
             '-d', 'session.name=PORT9SESSID', '-d', 'session.serialize_handler=php_serialize',
             '-d', 'session.use_strict_mode=1', '-d', 'session.cookie_httponly=1'];
+        if ($this->crud) {
+            $command[] = '-d';
+            $command[] = 'upload_tmp_dir=' . $this->temporaryDirectory . '/runtime';
+        }
         if ($this->blockMail) {
             $guard = __DIR__ . '/MailGuard.php';
             if (!is_file($guard)) {
@@ -250,29 +351,36 @@ final class HttpHarness
             $command[] = 'auto_prepend_file=' . $guard;
         }
         array_push($command, '-S', '127.0.0.1:' . $port, '-t', $root . '/public');
+        if ($this->crud) {
+            $command[] = $router;
+        }
         $this->server = proc_open($command, [
             0 => ['file', '/dev/null', 'r'],
             1 => ['file', $this->temporaryDirectory . '/stdout.log', 'w'],
             2 => ['file', $this->blockMail ? '/dev/null'
                 : $this->temporaryDirectory . '/stderr.log', 'w'],
-        ], $pipes, $root, $environment);
+        ], $pipes, $this->crud ? $this->temporaryDirectory . '/runtime' : $root, $environment);
         if (!is_resource($this->server)) {
             throw new RuntimeException('Cannot launch isolated HTTP server.');
         }
+        $readiness = 'no HTTP response';
         for ($attempt = 0; $attempt < 30; $attempt++) {
             if (!proc_get_status($this->server)['running']) {
                 throw new RuntimeException('HTTP server exited before readiness.');
             }
             try {
-                if ($this->request('GET', '/devwebcamp')['status'] === 200) {
+                $response = $this->request('GET', '/devwebcamp');
+                $readiness = 'HTTP ' . $response['status'] . ' Location='
+                    . ($response['location'] ?? '(none)');
+                if ($response['status'] === 200) {
                     return;
                 }
-            } catch (RuntimeException) {
-                // The server has not bound the port yet.
+            } catch (RuntimeException $error) {
+                $readiness = $error->getMessage();
             }
             usleep(100_000);
         }
-        throw new RuntimeException('HTTP server did not become ready.');
+        throw new RuntimeException('HTTP server did not become ready: ' . $readiness);
     }
 
     public function client(): HttpClient
@@ -283,17 +391,32 @@ final class HttpHarness
     /** @param ?array<string, string> $form
      *  @return array{method: string, path: string, status: int, location: ?string, body: string, setCookies: list<string>}
      */
-    public function request(string $method, string $path, ?array $form = null, ?string $cookie = null): array
+    public function request(string $method, string $path, ?array $form = null, ?string $cookie = null,
+        ?string $png = null): array
     {
         if (!in_array($method, ['GET', 'POST'], true) || !str_starts_with($path, '/')
-            || ($form !== null && $method !== 'POST')
+            || ($form !== null && $method !== 'POST') || ($png !== null && (!$this->crud || $method !== 'POST'))
             || ($cookie !== null && preg_match('/[\r\n]/', $cookie))) {
             throw new RuntimeException('Invalid HTTP request.');
         }
         $headers = "User-Agent: PORT-9-functional-smoke\r\n";
         $content = $form === null ? '' : http_build_query($form, '', '&', PHP_QUERY_RFC1738);
         if ($method === 'POST') {
-            $headers .= "Content-Type: application/x-www-form-urlencoded\r\n";
+            if ($png !== null) {
+                $boundary = 'port9' . bin2hex(random_bytes(12));
+                $content = '';
+                foreach ($form ?? [] as $name => $value) {
+                    if (!is_string($value)) {
+                        throw new RuntimeException('Multipart fields must be flattened.');
+                    }
+                    $content .= "--{$boundary}\r\nContent-Disposition: form-data; name=\"{$name}\"\r\n\r\n{$value}\r\n";
+                }
+                $content .= "--{$boundary}\r\nContent-Disposition: form-data; name=\"imagen\"; filename=\"synthetic.png\"\r\n"
+                    . "Content-Type: image/png\r\n\r\n{$png}\r\n--{$boundary}--\r\n";
+                $headers .= "Content-Type: multipart/form-data; boundary={$boundary}\r\n";
+            } else {
+                $headers .= "Content-Type: application/x-www-form-urlencoded\r\n";
+            }
             $headers .= 'Content-Length: ' . strlen($content) . "\r\n";
         }
         if ($cookie !== null) {
@@ -308,9 +431,11 @@ final class HttpHarness
             || !preg_match('~^HTTP/\S+\s+(\d+)~', $http_response_header[0], $match)) {
             throw new RuntimeException('HTTP request failed: ' . $method . ' ' . strtok($path, '?'));
         }
+        $this->requests++;
         $location = null;
         $setCookies = [];
         $mailGuard = false;
+        $imageGuard = false;
         foreach ($http_response_header as $header) {
             if (stripos($header, 'Location:') === 0) {
                 $location = trim(substr($header, 9));
@@ -318,10 +443,15 @@ final class HttpHarness
                 $setCookies[] = trim(substr($header, 11));
             } elseif ($header === 'X-Port9-Mail-Guard: active') {
                 $mailGuard = true;
+            } elseif ($header === 'X-Port9-Image-Guard: active') {
+                $imageGuard = true;
             }
         }
         if ($this->blockMail && !$mailGuard) {
             throw new RuntimeException('Test-only mail guard was not active; aborting HTTP checks.');
+        }
+        if ($this->crud && !$imageGuard) {
+            throw new RuntimeException('Test-only image guard was not active; aborting HTTP checks.');
         }
         return ['method' => $method, 'path' => $path, 'status' => (int) $match[1],
             'location' => $location, 'body' => $body, 'setCookies' => $setCookies];
@@ -413,6 +543,23 @@ final class HttpHarness
     private function removeTemporaryFiles(): void
     {
         if ($this->temporaryDirectory !== '') {
+            if ($this->crud) {
+                foreach ($this->speakerFiles() as $file) {
+                    if (!is_file($file) || !unlink($file)) {
+                        throw new RuntimeException('Cannot remove isolated speaker image.');
+                    }
+                }
+                foreach (['public/img/speakers', 'public/img', 'public', 'runtime'] as $dir) {
+                    if (is_dir($this->temporaryDirectory . '/' . $dir)
+                        && !rmdir($this->temporaryDirectory . '/' . $dir)) {
+                        throw new RuntimeException('Cannot remove isolated CRUD directory.');
+                    }
+                }
+                if (is_file($this->temporaryDirectory . '/router.php')
+                    && !unlink($this->temporaryDirectory . '/router.php')) {
+                    throw new RuntimeException('Cannot remove test-only router.');
+                }
+            }
             $sessions = $this->temporaryDirectory . '/sessions';
             if (is_dir($sessions)) {
                 foreach (glob($sessions . '/*') ?: [] as $file) {
@@ -448,14 +595,14 @@ final class HttpClient
     /** @param ?array<string, string> $form
      *  @return array{method: string, path: string, status: int, location: ?string, body: string, setCookies: list<string>}
      */
-    public function request(string $method, string $path, ?array $form = null): array
+    public function request(string $method, string $path, ?array $form = null, ?string $png = null): array
     {
         $cookie = [];
         foreach ($this->cookies as $name => $value) {
             $cookie[] = $name . '=' . $value;
         }
         $response = $this->harness->request($method, $path, $form,
-            $cookie === [] ? null : implode('; ', $cookie));
+            $cookie === [] ? null : implode('; ', $cookie), $png);
         foreach ($response['setCookies'] as $header) {
             $parts = explode(';', $header);
             [$name, $value] = array_pad(explode('=', trim($parts[0]), 2), 2, '');
