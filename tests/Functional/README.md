@@ -1,12 +1,13 @@
 # Isolated HTTP smoke
 
-Run `php scripts/run-http-smoke.php` only with all five `TEST_DB_*` variables described in
+Run `php scripts/run-http-smoke.php` or `php scripts/run-http-auth.php` only with all five `TEST_DB_*` variables described in
 `tests/Integration/README.md`. The target must be a new database named
 `devwebcamp_port6_test_` followed by eight lowercase hexadecimal digits. Use a dedicated
 test-only MySQL account; never supply development credentials or an existing database.
 
 The runner reuses Integration's configuration validation and connection identity checks.
-It refuses an existing database, creates only `schema.sql` and one synthetic event, then
+It refuses an existing database, creates only `schema.sql`, one synthetic event, and three
+synthetic users, then
 drops only the database it created. The PHP server receives explicit `DB_*` values in its
 child process and `APP_ENV_MODE=isolated-test`, which skips loading either local `.env`.
 The parent process environment is unchanged. PHP's `variables_order=EGPCS` makes the
@@ -18,6 +19,10 @@ public route to answer before testing. Cleanup stops the server, verifies it no 
 answers, drops the disposable database, removes session files and logs, and removes the
 temporary directory. Cleanup is attempted even when an assertion fails.
 
-This smoke tests only read-only public pages, a missing route, an anonymous admin redirect,
-and the synthetic read-only events API. It does not run legacy HTTP scripts or exercise
-login, account changes, CRUD, registration, payments, email, or uploads.
+The original smoke tests read-only public pages, a missing route, an anonymous admin redirect,
+and the synthetic read-only events API. The authenticated smoke uses separate cookie jars,
+form-encoded POST requests, and temporary session-file identity checks to exercise confirmed
+admin and attendee login, invalid and unconfirmed login, role denial, and logout. It checks
+session ID regeneration and rejects the previous ID after logout. Redirects are never followed.
+The attendee registration redirect is checked but its destination is not requested. Neither
+runner executes registration, account changes, CRUD, payments, email, or uploads.
