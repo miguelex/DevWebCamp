@@ -23,17 +23,27 @@ final class HttpHarness
     private array $fixtures = [];
     private array $initialRows = [];
 
-    public function __construct(private readonly IntegrationConfig $config) {}
+    public function __construct(
+        private readonly IntegrationConfig $config,
+        private readonly bool $blockMail = false,
+    ) {}
 
     /** @param callable(self): void $checks */
-    public function run(callable $checks): void
+    public function run(callable $checks, ?string $expectedNewUserEmail = null): void
     {
+        if ($expectedNewUserEmail !== null && !$this->blockMail) {
+            throw new RuntimeException('User lifecycle requires the mail guard.');
+        }
         $failure = null;
         try {
             $this->prepareDatabase();
             $this->startServer();
             $checks($this);
-            $this->assertDatabaseUnchanged();
+            if ($expectedNewUserEmail === null) {
+                $this->assertDatabaseUnchanged();
+            } else {
+                $this->assertOnlyNewUser($expectedNewUserEmail);
+            }
         } catch (\Throwable $error) {
             $failure = $error;
         } finally {
@@ -123,6 +133,57 @@ final class HttpHarness
         return $this->fixtures[$role];
     }
 
+    /** @return ?array<string, mixed> */
+    public function userByEmail(string $email): ?array
+    {
+        if ($this->appDb === null || $email === '') {
+            throw new RuntimeException('Disposable database is unavailable.');
+        }
+        $query = $this->appDb->prepare('SELECT * FROM usuarios_devwebcamp WHERE email = ?');
+        $query->execute([$email]);
+        $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) > 1) {
+            throw new RuntimeException('Duplicate synthetic email rows.');
+        }
+        return $rows[0] ?? null;
+    }
+
+    public function userCount(): int
+    {
+        if ($this->appDb === null) {
+            throw new RuntimeException('Disposable database is unavailable.');
+        }
+        return (int) $this->appDb->query('SELECT COUNT(*) FROM usuarios_devwebcamp')->fetchColumn();
+    }
+
+    public function assertFixturesUnchanged(): void
+    {
+        $rows = $this->rows();
+        foreach ($this->initialRows['usuarios_devwebcamp'] as $fixture) {
+            $found = array_values(array_filter($rows['usuarios_devwebcamp'],
+                static fn(array $row): bool => $row['id'] === $fixture['id']));
+            if ($found !== [$fixture]) {
+                throw new RuntimeException('Original synthetic user was modified.');
+            }
+        }
+        if ($rows['eventos'] !== $this->initialRows['eventos']) {
+            throw new RuntimeException('Synthetic event was modified.');
+        }
+    }
+
+    private function assertOnlyNewUser(string $email): void
+    {
+        $this->assertFixturesUnchanged();
+        $rows = $this->rows()['usuarios_devwebcamp'];
+        $new = array_values(array_filter($rows,
+            static fn(array $row): bool => $row['email'] === $email));
+        if (count($rows) !== count($this->initialRows['usuarios_devwebcamp']) + 1
+            || count($new) !== 1) {
+            throw new RuntimeException('Unexpected user lifecycle database writes.');
+        }
+        echo "Only the expected synthetic user changed the disposable database.\n";
+    }
+
     private function assertSyntheticFixture(): void
     {
         if ($this->appDb === null
@@ -162,7 +223,8 @@ final class HttpHarness
             throw new RuntimeException('Cannot read process environment.');
         }
         foreach (array_keys($environment) as $key) {
-            if (str_starts_with($key, 'DB_')) {
+            if (str_starts_with($key, 'DB_') || str_starts_with($key, 'EMAIL_')
+                || $key === 'HOST') {
                 unset($environment[$key]);
             }
         }
@@ -178,12 +240,21 @@ final class HttpHarness
         $command = [PHP_BINARY, '-d', 'variables_order=EGPCS',
             '-d', 'session.save_path=' . $this->temporaryDirectory . '/sessions',
             '-d', 'session.name=PORT9SESSID', '-d', 'session.serialize_handler=php_serialize',
-            '-d', 'session.use_strict_mode=1', '-d', 'session.cookie_httponly=1',
-            '-S', '127.0.0.1:' . $port, '-t', $root . '/public'];
+            '-d', 'session.use_strict_mode=1', '-d', 'session.cookie_httponly=1'];
+        if ($this->blockMail) {
+            $guard = __DIR__ . '/MailGuard.php';
+            if (!is_file($guard)) {
+                throw new RuntimeException('Test-only mail guard is missing.');
+            }
+            $command[] = '-d';
+            $command[] = 'auto_prepend_file=' . $guard;
+        }
+        array_push($command, '-S', '127.0.0.1:' . $port, '-t', $root . '/public');
         $this->server = proc_open($command, [
             0 => ['file', '/dev/null', 'r'],
             1 => ['file', $this->temporaryDirectory . '/stdout.log', 'w'],
-            2 => ['file', $this->temporaryDirectory . '/stderr.log', 'w'],
+            2 => ['file', $this->blockMail ? '/dev/null'
+                : $this->temporaryDirectory . '/stderr.log', 'w'],
         ], $pipes, $root, $environment);
         if (!is_resource($this->server)) {
             throw new RuntimeException('Cannot launch isolated HTTP server.');
@@ -235,16 +306,22 @@ final class HttpHarness
         $body = @file_get_contents($this->baseUrl . $path, false, $context);
         if ($body === false || empty($http_response_header)
             || !preg_match('~^HTTP/\S+\s+(\d+)~', $http_response_header[0], $match)) {
-            throw new RuntimeException("HTTP request failed: {$method} {$path}");
+            throw new RuntimeException('HTTP request failed: ' . $method . ' ' . strtok($path, '?'));
         }
         $location = null;
         $setCookies = [];
+        $mailGuard = false;
         foreach ($http_response_header as $header) {
             if (stripos($header, 'Location:') === 0) {
                 $location = trim(substr($header, 9));
             } elseif (stripos($header, 'Set-Cookie:') === 0) {
                 $setCookies[] = trim(substr($header, 11));
+            } elseif ($header === 'X-Port9-Mail-Guard: active') {
+                $mailGuard = true;
             }
+        }
+        if ($this->blockMail && !$mailGuard) {
+            throw new RuntimeException('Test-only mail guard was not active; aborting HTTP checks.');
         }
         return ['method' => $method, 'path' => $path, 'status' => (int) $match[1],
             'location' => $location, 'body' => $body, 'setCookies' => $setCookies];
