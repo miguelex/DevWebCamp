@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Core\ActiveRecord;
 
+// Keep legacy image preview absent until assignment; declarations change hydration, sync and JSON.
+#[\AllowDynamicProperties]
 class Ponente extends ActiveRecord {
     protected static $tabla = 'ponentes';
     protected static $columnasDB = ['id', 'nombre', 'apellido', 'ciudad', 'pais', 'imagen', 'tags', 'redes'];

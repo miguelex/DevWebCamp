@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Core\ActiveRecord;
 
+// Keep legacy user/package relations absent until assignment; declarations change hydration, sync and JSON.
+#[\AllowDynamicProperties]
 class Registro extends ActiveRecord
 {
     protected static $tabla = 'registros';

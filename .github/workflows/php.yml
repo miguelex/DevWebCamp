@@ -21,8 +21,9 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.5'
           extensions: dom, fileinfo, mbstring, xmlwriter
+          ini-values: error_reporting=E_ALL, log_errors=On, display_errors=stderr
           tools: composer:v2
           coverage: none
 
@@ -34,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php82-${{ hashFiles('composer.lock') }}
+          key: composer-${{ runner.os }}-php85-${{ hashFiles('composer.lock') }}
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -82,8 +83,9 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.5'
           extensions: dom, fileinfo, mbstring, pdo_mysql, xmlwriter
+          ini-values: error_reporting=E_ALL, log_errors=On, display_errors=stderr
           tools: composer:v2
           coverage: none
 
@@ -95,7 +97,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: composer-${{ runner.os }}-php82-${{ hashFiles('composer.lock') }}
+          key: composer-${{ runner.os }}-php85-${{ hashFiles('composer.lock') }}
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress

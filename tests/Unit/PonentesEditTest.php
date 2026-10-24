@@ -8,7 +8,6 @@ use App\Controllers\PonentesController;
 use App\Core\ActiveRecord;
 use App\Core\Router;
 use Intervention\Image\ImageManagerStatic;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
@@ -96,8 +95,40 @@ function submitEdit(array $get, array $post, array $files, FakeDatabase $databas
 
 final class PonentesEditTest extends TestCase
 {
-    // Existing dynamic Ponente preview property is deprecated in PHP 8.2.
-    #[IgnoreDeprecations]
+    public function testTransientModelFieldsKeepTheirLegacyAssignmentContract(): void
+    {
+        $models = [
+            [new \App\Models\Ponente(), ['imagen_actual']],
+            [new \App\Models\Evento(), ['categoria', 'dia', 'hora', 'ponente']],
+            [new \App\Models\Registro(), ['usuario', 'paquete']],
+        ];
+        $diagnostics = [];
+        set_error_handler(static function (int $level, string $message) use (&$diagnostics): bool {
+            $diagnostics[] = [$level, $message];
+            return true;
+        });
+        try {
+            foreach ($models as [$model, $fields]) {
+                $initial = get_object_vars($model);
+                foreach ($fields as $field) {
+                    self::assertFalse(property_exists($model, $field));
+                    $model->sincronizar([$field => 'ignored']);
+                    self::assertSame($initial, get_object_vars($model));
+                    $model->$field = 'initial';
+                    $model->sincronizar([$field => 'updated']);
+                    self::assertSame('updated', $model->$field);
+                    self::assertSame('updated', json_decode(json_encode($model, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR)[$field]);
+                    self::assertArrayNotHasKey($field, $model->atributos());
+                    unset($model->$field);
+                }
+                self::assertSame($initial, get_object_vars($model));
+            }
+        } finally {
+            restore_error_handler();
+        }
+        self::assertSame([], $diagnostics);
+    }
+
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     public function testSpeakerEditPreservesAndReplacesImagesWithoutPersistentUploads(): void

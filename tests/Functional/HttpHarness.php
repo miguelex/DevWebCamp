@@ -389,15 +389,13 @@ final class HttpHarness
         }
         $environment = array_replace($environment, [
             'APP_ENV_MODE' => 'isolated-test',
+            'HOST' => $this->baseUrl,
             'DB_HOST' => $this->config->host,
             'DB_PORT' => (string) $this->config->port,
             'DB_NAME' => $this->config->database,
             'DB_USER' => $this->config->user,
             'DB_PASS' => $this->config->password,
         ]);
-        if ($this->ticketing) {
-            $environment['HOST'] = $this->baseUrl;
-        }
         if ($this->crud) {
             $environment['PORT9_SPEAKER_DIRECTORY'] = $this->temporaryDirectory . '/public/img/speakers';
         }
@@ -520,8 +518,11 @@ final class HttpHarness
             'ignore_errors' => true, 'timeout' => 2, 'content' => $content,
         ]]);
         $body = @file_get_contents($this->baseUrl . $path, false, $context);
-        if ($body === false || empty($http_response_header)
-            || !preg_match('~^HTTP/\S+\s+(\d+)~', $http_response_header[0], $match)) {
+        $responseHeaders = function_exists('http_get_last_response_headers')
+            ? (http_get_last_response_headers() ?? [])
+            : (get_defined_vars()['http_response_header'] ?? []);
+        if ($body === false || empty($responseHeaders)
+            || !preg_match('~^HTTP/\S+\s+(\d+)~', $responseHeaders[0], $match)) {
             throw new RuntimeException('HTTP request failed: ' . $method . ' ' . strtok($path, '?'));
         }
         $this->requests++;
@@ -529,7 +530,7 @@ final class HttpHarness
         $setCookies = [];
         $mailGuard = false;
         $imageGuard = false;
-        foreach ($http_response_header as $header) {
+        foreach ($responseHeaders as $header) {
             if (stripos($header, 'Location:') === 0) {
                 $location = trim(substr($header, 9));
             } elseif (stripos($header, 'Set-Cookie:') === 0) {

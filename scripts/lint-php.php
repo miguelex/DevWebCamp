@@ -21,17 +21,22 @@ sort($files);
 $failures = 0;
 
 foreach ($files as $file) {
-    $process = proc_open([PHP_BINARY, '-l', $file], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $process = proc_open([PHP_BINARY, '-d', 'error_reporting=E_ALL', '-d', 'display_errors=stderr', '-l', $file],
+        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
     if (!is_resource($process)) {
         fwrite(STDERR, "Could not run PHP syntax check for $file\n");
         $failures++;
         continue;
     }
 
-    $output = stream_get_contents($pipes[1]) . stream_get_contents($pipes[2]);
+    $output = stream_get_contents($pipes[1]);
+    $diagnostics = stream_get_contents($pipes[2]);
     fclose($pipes[1]);
     fclose($pipes[2]);
 
+    if ($diagnostics !== '') {
+        fwrite(STDERR, $diagnostics);
+    }
     if (proc_close($process) !== 0) {
         fwrite(STDERR, $output);
         $failures++;
