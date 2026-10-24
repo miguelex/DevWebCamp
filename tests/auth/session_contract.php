@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // PORT-4 block 2: verify session lifecycle without persistent fixture writes.
-error_reporting(E_ALL & ~E_DEPRECATED);
+error_reporting(E_ALL);
 
 use App\Controllers\AuthController;
 use App\Core\ActiveRecord;
@@ -52,13 +52,16 @@ function requestSession(string $base, string $path, string $method = 'GET', ?str
         'ignore_errors' => true, 'timeout' => 5,
     ]]);
     $body = @file_get_contents($base . $path, false, $context);
-    if ($body === false || empty($http_response_header)) {
+    $responseHeaders = function_exists('http_get_last_response_headers')
+        ? (http_get_last_response_headers() ?? [])
+        : (get_defined_vars()['http_response_header'] ?? []);
+    if ($body === false || empty($responseHeaders)) {
         throw new RuntimeException('Isolated HTTP server did not answer.');
     }
-    preg_match('~^HTTP/\S+\s+(\d+)~', $http_response_header[0], $match);
+    preg_match('~^HTTP/\S+\s+(\d+)~', $responseHeaders[0], $match);
     $location = null;
     $cookies = [];
-    foreach ($http_response_header as $header) {
+    foreach ($responseHeaders as $header) {
         if (stripos($header, 'Location:') === 0) {
             $location = trim(substr($header, 9));
         }

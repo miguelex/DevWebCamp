@@ -9,7 +9,7 @@ function debuguear($variable): string
 }
 function s($html): string
 {
-    $s = htmlspecialchars($html);
+    $s = htmlspecialchars($html ?? '');
     return $s;
 }
 

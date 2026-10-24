@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Core\ActiveRecord;
 
+// Keep legacy category/day/time/speaker relations absent until assignment; declarations change hydration, sync and JSON.
+#[\AllowDynamicProperties]
 class Evento extends ActiveRecord {
     protected static $tabla = 'eventos';
     protected static $columnasDB = ['id', 'nombre', 'descripcion', 'disponibles', 'categoria_id', 'dia_id', 'hora_id', 'ponente_id'];

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Characterize the current runtime without changing data or calling write routes.
-error_reporting(E_ALL & ~E_DEPRECATED);
+error_reporting(E_ALL);
 
 use App\Core\ActiveRecord;
 use App\Models\Categoria;
@@ -57,16 +57,19 @@ function httpSnapshot(string $baseUrl, string $path): array
     ]);
 
     $body = @file_get_contents($baseUrl . $path, false, $context);
-    if ($body === false || empty($http_response_header)) {
+    $responseHeaders = function_exists('http_get_last_response_headers')
+        ? (http_get_last_response_headers() ?? [])
+        : (get_defined_vars()['http_response_header'] ?? []);
+    if ($body === false || empty($responseHeaders)) {
         throw new RuntimeException("HTTP request failed: {$path}");
     }
 
-    preg_match('~^HTTP/\S+\s+(\d+)~', $http_response_header[0], $match);
+    preg_match('~^HTTP/\S+\s+(\d+)~', $responseHeaders[0], $match);
     $status = (int) ($match[1] ?? 0);
     $contentType = '';
     $location = null;
 
-    foreach ($http_response_header as $header) {
+    foreach ($responseHeaders as $header) {
         if (stripos($header, 'Content-Type:') === 0) {
             $contentType = strtolower(trim(explode(';', substr($header, 13), 2)[0]));
         }

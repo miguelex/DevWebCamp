@@ -64,7 +64,7 @@ class Usuario extends ActiveRecord {
         if(!$this->password) {
             self::$alertas['error'][] = 'El Password no puede ir vacio';
         }
-        if(strlen($this->password) < 6) {
+        if(strlen($this->password ?? '') < 6) {
             self::$alertas['error'][] = 'El password debe contener al menos 6 caracteres';
         }
         if($this->password !== $this->password2) {
@@ -89,7 +89,7 @@ class Usuario extends ActiveRecord {
         if(!$this->password) {
             self::$alertas['error'][] = 'El Password no puede ir vacio';
         }
-        if(strlen($this->password) < 6) {
+        if(strlen($this->password ?? '') < 6) {
             self::$alertas['error'][] = 'El password debe contener al menos 6 caracteres';
         }
         return self::$alertas;
@@ -102,7 +102,7 @@ class Usuario extends ActiveRecord {
         if(!$this->password_nuevo) {
             self::$alertas['error'][] = 'El Password Nuevo no puede ir vacio';
         }
-        if(strlen($this->password_nuevo) < 6) {
+        if(strlen($this->password_nuevo ?? '') < 6) {
             self::$alertas['error'][] = 'El Password debe contener al menos 6 caracteres';
         }
         return self::$alertas;
@@ -110,12 +110,12 @@ class Usuario extends ActiveRecord {
 
     // Comprobar el password
     public function comprobar_password() : bool {
-        return password_verify($this->password_actual, $this->password );
+        return password_verify($this->password_actual ?? '', $this->password ?? '');
     }
 
     // Hashea el password
     public function hashPassword() : void {
-        $this->password = password_hash($this->password, PASSWORD_BCRYPT);
+        $this->password = password_hash($this->password ?? '', PASSWORD_BCRYPT);
     }
 
     // Generar un Token

@@ -136,6 +136,73 @@ final class UsuarioTest extends TestCase
         self::assertFalse($user->comprobar_password());
     }
 
+    public function testNullAndEmptyPasswordsKeepExactValidationAlerts(): void
+    {
+        foreach ([null, ''] as $password) {
+            $user = new Usuario([
+                'nombre' => 'Synthetic', 'apellido' => 'Account',
+                'email' => 'synthetic@example.invalid',
+            ]);
+            $user->password = $password;
+            $user->password2 = $password;
+            self::assertSame(['error' => [
+                'El Password no puede ir vacio',
+                'El password debe contener al menos 6 caracteres',
+            ]], $user->validar_cuenta());
+
+            $user->validar();
+            self::assertSame(['error' => [
+                'El Password no puede ir vacio',
+                'El password debe contener al menos 6 caracteres',
+            ]], $user->validarPassword());
+
+            $user->validar();
+            $user->password_actual = $password;
+            $user->password_nuevo = $password;
+            self::assertSame(['error' => [
+                'El Password Actual no puede ir vacio',
+                'El Password Nuevo no puede ir vacio',
+                'El Password debe contener al menos 6 caracteres',
+            ]], $user->nuevo_password());
+            $user->validar();
+        }
+    }
+
+    public function testPasswordVerificationRetainsNullEmptyAndNormalResults(): void
+    {
+        $hash = password_hash('synthetic-password', PASSWORD_BCRYPT);
+        foreach ([null, ''] as $password) {
+            $user = new Usuario();
+            $user->password_actual = $password;
+            $user->password = $hash;
+            self::assertFalse($user->comprobar_password());
+            $user->password_actual = 'synthetic-password';
+            $user->password = $password;
+            self::assertFalse($user->comprobar_password());
+        }
+        $user->password = $hash;
+        self::assertTrue($user->comprobar_password());
+    }
+
+    public function testHashingNullAndEmptyPasswordsPreservesEmptyStringSemantics(): void
+    {
+        foreach ([null, '', 'synthetic-password'] as $password) {
+            $user = new Usuario();
+            $user->password = $password;
+            $user->hashPassword();
+            self::assertSame('bcrypt', password_get_info($user->password)['algoName']);
+            self::assertTrue(password_verify($password ?? '', $user->password));
+        }
+    }
+
+    public function testPasswordValidationStillRejectsArrayInputs(): void
+    {
+        $user = new Usuario();
+        $user->password = ['invalid'];
+        $this->expectException(\TypeError::class);
+        $user->validarPassword();
+    }
+
     public function testTokenGenerationReplacesPreviousToken(): void
     {
         $user = new Usuario(['token' => 'injected-token']);
