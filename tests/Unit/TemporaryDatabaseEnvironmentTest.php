@@ -23,7 +23,7 @@ final class TemporaryDatabaseEnvironmentTest extends TestCase
             'TEST_DB_USER' => 'synthetic_test_user',
             'TEST_DB_PASS' => '',
         ]);
-        $keys = ['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS'];
+        $keys = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASS'];
         $original = [];
         foreach ($keys as $key) {
             $original[$key] = [array_key_exists($key, $_ENV), $_ENV[$key] ?? null];
@@ -31,6 +31,7 @@ final class TemporaryDatabaseEnvironmentTest extends TestCase
 
         try {
             $_ENV['DB_HOST'] = 'original-host';
+            $_ENV['DB_PORT'] = '49999';
             unset($_ENV['DB_NAME']);
             $_ENV['DB_USER'] = 'original-user';
             unset($_ENV['DB_PASS']);
@@ -38,6 +39,7 @@ final class TemporaryDatabaseEnvironmentTest extends TestCase
 
             TemporaryDatabaseEnvironment::run($config, static function () use ($config): void {
                 self::assertTrue($_ENV['DB_HOST'] === $config->host);
+                self::assertTrue($_ENV['DB_PORT'] === (string) $config->port);
                 self::assertTrue($_ENV['DB_NAME'] === $config->database);
                 self::assertTrue($_ENV['DB_USER'] === $config->user);
                 self::assertTrue($_ENV['DB_PASS'] === $config->password);

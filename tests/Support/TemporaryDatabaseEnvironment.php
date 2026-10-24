@@ -10,6 +10,7 @@ final class TemporaryDatabaseEnvironment
     {
         $replacement = [
             'DB_HOST' => $config->host,
+            'DB_PORT' => (string) $config->port,
             'DB_NAME' => $config->database,
             'DB_USER' => $config->user,
             'DB_PASS' => $config->password,
