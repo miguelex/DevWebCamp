@@ -28,6 +28,7 @@ final class HttpHarness
         private readonly IntegrationConfig $config,
         private readonly bool $blockMail = false,
         private readonly bool $crud = false,
+        private readonly bool $ticketing = false,
     ) {}
 
     /** @param callable(self): void $checks */
@@ -87,8 +88,11 @@ final class HttpHarness
             }
         }
         $this->seedUsers();
-        if ($this->crud) {
+        if ($this->crud || $this->ticketing) {
             $this->seedCrudFixture();
+        }
+        if ($this->ticketing) {
+            $this->seedTicketingFixture();
         }
         $this->initialRows = $this->rows();
         $this->assertSyntheticFixture();
@@ -102,11 +106,16 @@ final class HttpHarness
             'INSERT INTO usuarios_devwebcamp (nombre, apellido, email, password, confirmado, admin)'
             . ' VALUES (?, ?, ?, ?, ?, ?)'
         );
-        foreach ([
+        $roles = [
             'admin' => [1, 1],
             'attendee' => [1, 0],
             'unconfirmed' => [0, 0],
-        ] as $role => [$confirmed, $admin]) {
+        ];
+        if ($this->ticketing) {
+            $roles['online'] = [1, 0];
+            $roles['presencial'] = [1, 0];
+        }
+        foreach ($roles as $role => [$confirmed, $admin]) {
             $email = $role . '-' . bin2hex(random_bytes(6)) . '@example.invalid';
             $insert->execute(['Synthetic', ucfirst($role), $email, $hash, $confirmed, $admin]);
             $this->fixtures[$role] = [
@@ -127,13 +136,83 @@ final class HttpHarness
                 'SELECT * FROM usuarios_devwebcamp ORDER BY id'
             )->fetchAll(PDO::FETCH_ASSOC),
         ];
-        if ($this->crud) {
+        if ($this->crud || $this->ticketing) {
             foreach (['categorias', 'dias', 'horas', 'ponentes'] as $table) {
                 $rows[$table] = $this->appDb->query("SELECT * FROM {$table} ORDER BY id")
                     ->fetchAll(PDO::FETCH_ASSOC);
             }
         }
+        if ($this->ticketing) {
+            foreach (['paquetes', 'registros'] as $table) {
+                $rows[$table] = $this->appDb->query("SELECT * FROM {$table} ORDER BY id")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
         return $rows;
+    }
+
+    private function seedTicketingFixture(): void
+    {
+        $schema = file_get_contents(__DIR__ . '/ticketing-schema.sql');
+        if ($schema === false) {
+            throw new RuntimeException('Ticketing-only schema is missing.');
+        }
+        foreach (explode(';', $schema) as $statement) {
+            if (trim($statement) !== '') {
+                $this->appDb->exec($statement);
+            }
+        }
+        foreach (['Presencial', 'Virtual', 'Gratis'] as $name) {
+            $insert = $this->appDb->prepare('INSERT INTO paquetes (nombre) VALUES (?)');
+            $insert->execute([$name]);
+            $this->fixtures['package_' . strtolower($name)] = (int) $this->appDb->lastInsertId();
+        }
+        if ($this->fixtures['package_presencial'] !== 1 || $this->fixtures['package_virtual'] !== 2
+            || $this->fixtures['package_gratis'] !== 3
+            || $this->fixtures['categoria_id'] !== 1 || $this->fixtures['dia_id'] !== 1) {
+            throw new RuntimeException('Legacy package/category/day semantics require initial IDs 1/2/3.');
+        }
+        $this->appDb->exec("INSERT INTO categorias (nombre) VALUES ('Synthetic Workshop')");
+        $category = (int) $this->appDb->lastInsertId();
+        $this->appDb->exec("INSERT INTO dias (nombre) VALUES ('Synthetic Saturday')");
+        $day = (int) $this->appDb->lastInsertId();
+        if ($category !== 2 || $day !== 2) {
+            throw new RuntimeException('Legacy conference grouping requires category/day ID 2.');
+        }
+        $insert = $this->appDb->prepare('INSERT INTO eventos (nombre, descripcion, disponibles, '
+            . 'categoria_id, dia_id, hora_id, ponente_id) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        foreach ([[$this->fixtures['categoria_id'], $day], [$category, $this->fixtures['dia_id']], [$category, $day]] as $index => [$categoryId, $dayId]) {
+            $insert->execute(['Fixture Session ' . ($index + 2), 'Synthetic fixture', $index === 2 ? 0 : 10,
+                $categoryId, $dayId, $this->fixtures['hora_id'], $this->fixtures['ponente_id']]);
+        }
+        $insert = $this->appDb->prepare('INSERT INTO registros (paquete_id, pago_id, token, usuario_id)'
+            . ' VALUES (?, ?, ?, ?)');
+        foreach (['presencial' => 'presencial', 'online' => 'virtual'] as $role => $package) {
+            $insert->execute([$this->fixtures['package_' . $package], '', bin2hex(random_bytes(4)),
+                $this->fixtures[$role]['id']]);
+        }
+    }
+
+    /** @return array<string, list<array<string, mixed>>> */
+    public function ticketingSnapshot(): array
+    {
+        if (!$this->ticketing) {
+            throw new RuntimeException('Ticketing database is unavailable.');
+        }
+        return $this->rows();
+    }
+
+    public function removeTestRegistration(int $id): void
+    {
+        if (!$this->ticketing || $this->appDb === null
+            || in_array($id, array_map('intval', array_column($this->initialRows['registros'], 'id')), true)) {
+            throw new RuntimeException('Refusing to delete a fixture registration.');
+        }
+        $delete = $this->appDb->prepare('DELETE FROM registros WHERE id = ?');
+        $delete->execute([$id]);
+        if ($delete->rowCount() !== 1) {
+            throw new RuntimeException('Expected synthetic registration was not removed.');
+        }
     }
 
     private function seedCrudFixture(): void
@@ -258,10 +337,10 @@ final class HttpHarness
 
     private function assertSyntheticFixture(): void
     {
-        if ($this->crud) {
+        if ($this->crud || $this->ticketing) {
             if ($this->appDb === null || $this->appDb->query('SELECT DATABASE()')->fetchColumn()
                 !== $this->config->database || $this->rows() !== $this->initialRows
-                || count($this->initialRows['usuarios_devwebcamp'] ?? []) !== 3) {
+                || count($this->initialRows['usuarios_devwebcamp'] ?? []) !== ($this->ticketing ? 5 : 3)) {
                 throw new RuntimeException('CRUD synthetic fixture identity mismatch.');
             }
             return;
@@ -316,18 +395,22 @@ final class HttpHarness
             'DB_USER' => $this->config->user,
             'DB_PASS' => $this->config->password,
         ]);
+        if ($this->ticketing) {
+            $environment['HOST'] = $this->baseUrl;
+        }
         if ($this->crud) {
             $environment['PORT9_SPEAKER_DIRECTORY'] = $this->temporaryDirectory . '/public/img/speakers';
         }
         $root = dirname(__DIR__, 2);
-        if ($this->crud) {
+        if ($this->crud || $this->ticketing) {
             if (!mkdir($this->temporaryDirectory . '/runtime', 0700)
                 || !mkdir($this->temporaryDirectory . '/public/img/speakers', 0700, true)) {
                 throw new RuntimeException('Cannot create isolated CRUD filesystem.');
             }
             $router = $this->temporaryDirectory . '/router.php';
-            $code = '<?php require_once ' . var_export(__DIR__ . '/ImageGuard.php', true)
-                . '; $_SERVER[\'PATH_INFO\'] = parse_url($_SERVER[\'REQUEST_URI\'], PHP_URL_PATH); '
+            $code = '<?php ' . ($this->crud ? 'require_once '
+                . var_export(__DIR__ . '/ImageGuard.php', true) . '; ' : '')
+                . '$_SERVER[\'PATH_INFO\'] = parse_url($_SERVER[\'REQUEST_URI\'], PHP_URL_PATH); '
                 . 'chdir(' . var_export($this->temporaryDirectory . '/runtime', true)
                 . '); require ' . var_export($root . '/public/index.php', true) . ';';
             if (file_put_contents($router, $code) === false) {
@@ -338,6 +421,10 @@ final class HttpHarness
             '-d', 'session.save_path=' . $this->temporaryDirectory . '/sessions',
             '-d', 'session.name=PORT9SESSID', '-d', 'session.serialize_handler=php_serialize',
             '-d', 'session.use_strict_mode=1', '-d', 'session.cookie_httponly=1'];
+        if ($this->ticketing) {
+            array_push($command, '-d', 'allow_url_fopen=0', '-d',
+                'disable_functions=curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client');
+        }
         if ($this->crud) {
             $command[] = '-d';
             $command[] = 'upload_tmp_dir=' . $this->temporaryDirectory . '/runtime';
@@ -351,15 +438,15 @@ final class HttpHarness
             $command[] = 'auto_prepend_file=' . $guard;
         }
         array_push($command, '-S', '127.0.0.1:' . $port, '-t', $root . '/public');
-        if ($this->crud) {
+        if ($this->crud || $this->ticketing) {
             $command[] = $router;
         }
         $this->server = proc_open($command, [
             0 => ['file', '/dev/null', 'r'],
             1 => ['file', $this->temporaryDirectory . '/stdout.log', 'w'],
-            2 => ['file', $this->blockMail ? '/dev/null'
+            2 => ['file', $this->blockMail || $this->ticketing ? '/dev/null'
                 : $this->temporaryDirectory . '/stderr.log', 'w'],
-        ], $pipes, $this->crud ? $this->temporaryDirectory . '/runtime' : $root, $environment);
+        ], $pipes, $this->crud || $this->ticketing ? $this->temporaryDirectory . '/runtime' : $root, $environment);
         if (!is_resource($this->server)) {
             throw new RuntimeException('Cannot launch isolated HTTP server.');
         }
@@ -394,6 +481,12 @@ final class HttpHarness
     public function request(string $method, string $path, ?array $form = null, ?string $cookie = null,
         ?string $png = null): array
     {
+        if ($this->ticketing && !in_array($method . ' ' . strtok($path, '?'), [
+            'GET /devwebcamp', 'POST /login', 'GET /boleto',
+            'POST /finalizar-registro/gratis', 'GET /finalizar-registro/conferencias',
+        ], true)) {
+            throw new RuntimeException('Route outside the ticketing-only allowlist.');
+        }
         if (!in_array($method, ['GET', 'POST'], true) || !str_starts_with($path, '/')
             || ($form !== null && $method !== 'POST') || ($png !== null && (!$this->crud || $method !== 'POST'))
             || ($cookie !== null && preg_match('/[\r\n]/', $cookie))) {
@@ -543,8 +636,8 @@ final class HttpHarness
     private function removeTemporaryFiles(): void
     {
         if ($this->temporaryDirectory !== '') {
-            if ($this->crud) {
-                foreach ($this->speakerFiles() as $file) {
+            if ($this->crud || $this->ticketing) {
+                foreach (glob($this->temporaryDirectory . '/public/img/speakers/*') ?: [] as $file) {
                     if (!is_file($file) || !unlink($file)) {
                         throw new RuntimeException('Cannot remove isolated speaker image.');
                     }

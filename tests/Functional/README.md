@@ -71,3 +71,57 @@ The event POST supplies complete backend fields directly. It does not simulate t
 day/hour/speaker inputs populated by `src/js/horas.js` and `src/js/ponentes.js`, nor does it
 validate frontend interactions, responsive presentation, production uploads, ticketing,
 conference registration, checkout, PayPal, or any external call.
+
+## Ticketing backend (PORT-9 block 5)
+
+Run `php scripts/run-http-ticketing.php` with the same five disposable `TEST_DB_*`
+variables. This runner reuses the catalog/event schema and adds only `paquetes` and
+`registros` from `ticketing-schema.sql`. These are minimal functional tables, **not**
+the full production DDL: no production foreign keys, uniqueness, cascades, or payment
+validation are claimed. The synthetic schema permits duplicate registrations so the
+legacy controller's behavior can be observed, not so production constraints can be inferred.
+
+Fixtures comprise five synthetic users, three packages, two registrations (presencial and
+virtual), one speaker, two categories, two days, one hour, and four events covering every
+category/day group, including a sold-out event. Generated IDs are captured from MySQL;
+the runner explicitly checks the legacy semantic IDs (packages 1/2/3, categories/days 1/2).
+No payment is simulated or validated: paid-access rows are direct synthetic fixtures with
+empty `pago_id`, not evidence of PayPal capture.
+
+| Route | Observed backend contract |
+| --- | --- |
+| `GET /boleto?id=<token>` | No authentication or ownership guard. Valid token looks up registration, user, and package and renders HTML name/plan/token; no QR or PDF generation. |
+| `POST /finalizar-registro/gratis` | Authentication required; inserts package 3, empty payment ID, generated eight-character token and session user ID; redirects to `/boleto?id=<token>`. |
+| `GET /finalizar-registro/conferencias` | Authentication plus first registration with package 1; otherwise redirects to `/login` (anonymous) or `/` (authenticated without access). Hydrates category/day/hour/speaker and renders four event groups without DB writes. |
+
+Known legacy defects are recorded, not repaired: the ticket token-length condition is
+ineffective; an unknown token returns HTTP 302 with `Location: /` in the tested runtime,
+but execution continues into a null-object error. The retained redirect status is not
+evidence of a clean early return, and this case is not reported as HTTP 500.
+Free registration inserts again for an already-free user and even after a paid registration:
+the earlier paid-ticket redirect does not return and the new free-ticket redirect replaces it.
+The runner checks these behaviors and the absence of unrelated row changes. Every read
+and denial is checked against an eight-table snapshot; the three expected inserted
+registrations are removed by ID before the original snapshot is verified again.
+An INSERT/DELETE cycle advances auto-increment counters; snapshot restoration means row
+content, not resetting those counters. The disposable database is then dropped.
+
+### Safety and limits
+
+The block-5 HTTP allowlist excludes both `/finalizar-registro` (checkout HTML containing
+the PayPal SDK) and `/finalizar-registro/pagar`. Its server disables URL fopen and PHP
+cURL/socket send functions; its client sends only loopback requests, does not follow
+redirects, and never fetches HTML asset URLs or executes JavaScript. Ticket URLs and
+redirect tokens are redacted from output, and the server access/error log is discarded.
+Sessions, the router, logs, and isolated filesystem directories are removed in `finally`.
+
+`src/js/registro.js` only maintains a local array and DOM summary; it contains no persistence
+request. Repeated backend renders leave the DB unchanged, but this runner does **not**
+execute or validate browser selection. The payment endpoint trusts client POST fields and
+does not verify a PayPal capture; this is documented only, never called or fixed here.
+
+Manual staging checks remain browser navigation, layout/responsive/accessibility, asset
+loading, JavaScript conference selection, production image upload/real Intervention Image,
+and an independently authorized isolated payment-validation review. No real PayPal operation
+or external request is part of PORT-9 block 5. Rollback is limited to this runner/schema,
+its opt-in harness additions, and this README section; production behavior is unchanged.
