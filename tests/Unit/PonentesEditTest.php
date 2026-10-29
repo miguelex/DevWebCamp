@@ -134,7 +134,7 @@ final class PonentesEditTest extends TestCase
     public function testSpeakerEditPreservesAndReplacesImagesWithoutPersistentUploads(): void
     {
         require_once dirname(__DIR__) . '/Support/RecordingImage.php';
-        $root = dirname(__DIR__, 2);
+        $temporaryRoot = sys_get_temp_dir() . '/port18-speaker-edit-' . bin2hex(random_bytes(8));
         $originalDirectory = getcwd();
         $temporaryUpload = null;
 
@@ -143,9 +143,10 @@ final class PonentesEditTest extends TestCase
             self::assertTrue(session_start(['use_cookies' => false]), 'synthetic administrator session started');
             $_SESSION = ['id' => 1, 'nombre' => 'Synthetic', 'admin' => 1];
 
-            self::assertTrue(chdir($root . '/public'), 'public working directory selected');
-            $uploadDirectory = '../public/img/speakers/';
-            self::assertTrue(is_dir($uploadDirectory), 'existing upload directory prevents mkdir');
+            self::assertTrue(mkdir($temporaryRoot . '/img/speakers', 0700, true));
+            define('PUBLIC_PATH', $temporaryRoot);
+            self::assertTrue(chdir(sys_get_temp_dir()), 'working directory is unrelated to the public root');
+            $uploadDirectory = PUBLIC_PATH . '/img/speakers/';
             $existingFiles = scandir($uploadDirectory);
             $validFields = [
                 'nombre' => 'Updated', 'apellido' => 'Speaker', 'ciudad' => 'Madrid',
@@ -204,6 +205,11 @@ final class PonentesEditTest extends TestCase
                 'processed replacement updates only the generated image name');
             self::assertTrue($speaker->imagen_actual === 'existing-image' && !isset($_POST['imagen_actual']),
                 'processed replacement preserves the original preview identity');
+            foreach (ImageManagerStatic::$saved as [$path, $format]) {
+                self::assertSame($temporaryRoot . '/img/speakers', dirname($path),
+                    'image save is anchored to the isolated public root, not the CWD');
+                self::assertSame($speaker->imagen . '.' . $format, basename($path));
+            }
             self::assertTrue(scandir($uploadDirectory) === $existingFiles,
                 'image double left no persistent upload files');
         } finally {
@@ -215,6 +221,11 @@ final class PonentesEditTest extends TestCase
             }
             if ($originalDirectory !== false) {
                 chdir($originalDirectory);
+            }
+            foreach (['/img/speakers', '/img', ''] as $directory) {
+                if (is_dir($temporaryRoot . $directory)) {
+                    self::assertTrue(rmdir($temporaryRoot . $directory));
+                }
             }
             ActiveRecord::setDB(null);
         }

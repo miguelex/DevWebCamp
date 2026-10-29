@@ -78,7 +78,7 @@ final class PonentesCreateTest extends TestCase
     public function testSpeakerCreationRejectsForgedAndMissingImagesAndUsesAnImageDouble(): void
     {
         require_once dirname(__DIR__) . '/Support/RecordingImage.php';
-        $root = dirname(__DIR__, 2);
+        $temporaryRoot = sys_get_temp_dir() . '/port18-speaker-create-' . bin2hex(random_bytes(8));
         $originalDirectory = getcwd();
         $temporaryUpload = null;
 
@@ -87,9 +87,10 @@ final class PonentesCreateTest extends TestCase
             self::assertTrue(session_start(['use_cookies' => false]), 'synthetic session started');
             $_SESSION = ['id' => 1, 'nombre' => 'Synthetic', 'admin' => 1];
 
-            self::assertTrue(chdir($root . '/public'), 'public working directory selected');
-            $uploadDirectory = '../public/img/speakers/';
-            self::assertTrue(is_dir($uploadDirectory), 'existing upload directory prevents mkdir');
+            self::assertTrue(mkdir($temporaryRoot . '/img/speakers', 0700, true));
+            define('PUBLIC_PATH', $temporaryRoot);
+            self::assertTrue(chdir(sys_get_temp_dir()), 'working directory is unrelated to the public root');
+            $uploadDirectory = PUBLIC_PATH . '/img/speakers/';
             $existingFiles = scandir($uploadDirectory);
 
             $database = new FakeDatabase();
@@ -129,6 +130,11 @@ final class PonentesCreateTest extends TestCase
             self::assertTrue($_POST['imagen'] !== 'forged-name'
                 && preg_match('/\A[a-f0-9]{32}\z/D', $_POST['imagen']) === 1,
                 'processed upload replaces the forged POST image name');
+            foreach (ImageManagerStatic::$saved as [$path, $format]) {
+                self::assertSame($temporaryRoot . '/img/speakers', dirname($path),
+                    'image save is anchored to the isolated public root, not the CWD');
+                self::assertSame($_POST['imagen'] . '.' . $format, basename($path));
+            }
             self::assertTrue(scandir($uploadDirectory) === $existingFiles,
                 'image double left no persistent upload files');
         } finally {
@@ -140,6 +146,11 @@ final class PonentesCreateTest extends TestCase
             }
             if ($originalDirectory !== false) {
                 chdir($originalDirectory);
+            }
+            foreach (['/img/speakers', '/img', ''] as $directory) {
+                if (is_dir($temporaryRoot . $directory)) {
+                    self::assertTrue(rmdir($temporaryRoot . $directory));
+                }
             }
             ActiveRecord::setDB(null);
         }

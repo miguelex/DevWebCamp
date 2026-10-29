@@ -52,7 +52,7 @@ class PonentesController {
             //Leer imagen
 
             if(!empty($_FILES['imagen']['tmp_name'])) {
-                $carpeta_imagen = '../public/img/speakers/';
+                $carpeta_imagen = PUBLIC_PATH . '/img/speakers/';
 
                 //Crear la carpeta si no existe
                 if(!is_dir($carpeta_imagen)){
@@ -126,7 +126,7 @@ class PonentesController {
             //Leer imagen
 
             if(!empty($_FILES['imagen']['tmp_name'])) {
-                $carpeta_imagen = '../public/img/speakers/';
+                $carpeta_imagen = PUBLIC_PATH . '/img/speakers/';
 
                 //Crear la carpeta si no existe
                 if(!is_dir($carpeta_imagen)){
