@@ -2,6 +2,8 @@
 @use 'base/variables' as v;
 
 .resumen {
+    // Keep lateral entrance animations within the section.
+    overflow-x: clip;
     background-image: linear-gradient(to right, rgba(v.$azul, .7), rgba(v.$azul, .9)), url(../img/bg_numeros.jpg);
     background-image: linear-gradient(to right, rgba(v.$azul, .7), rgba(v.$azul, .9)), image-set(
         url('../img/bg_numeros.avif') 1x,

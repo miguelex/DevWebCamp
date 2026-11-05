@@ -383,7 +383,7 @@ final class HttpHarness
         }
         foreach (array_keys($environment) as $key) {
             if (str_starts_with($key, 'DB_') || str_starts_with($key, 'EMAIL_')
-                || $key === 'HOST') {
+                || in_array($key, ['HOST', 'APP_ROOT', 'APP_PUBLIC_ROOT'], true)) {
                 unset($environment[$key]);
             }
         }
@@ -397,6 +397,7 @@ final class HttpHarness
             'DB_PASS' => $this->config->password,
         ]);
         if ($this->crud) {
+            $environment['APP_PUBLIC_ROOT'] = $this->temporaryDirectory . '/public';
             $environment['PORT9_SPEAKER_DIRECTORY'] = $this->temporaryDirectory . '/public/img/speakers';
         }
         $root = dirname(__DIR__, 2);
@@ -409,8 +410,7 @@ final class HttpHarness
             $code = '<?php ' . ($this->crud ? 'require_once '
                 . var_export(__DIR__ . '/ImageGuard.php', true) . '; ' : '')
                 . '$_SERVER[\'PATH_INFO\'] = parse_url($_SERVER[\'REQUEST_URI\'], PHP_URL_PATH); '
-                . 'chdir(' . var_export($this->temporaryDirectory . '/runtime', true)
-                . '); require ' . var_export($root . '/public/index.php', true) . ';';
+                . 'require ' . var_export($root . '/public/index.php', true) . ';';
             if (file_put_contents($router, $code) === false) {
                 throw new RuntimeException('Cannot create test-only router.');
             }

@@ -1,0 +1,9 @@
+DirectoryIndex index.php
+AcceptPathInfo On
+RewriteEngine On
+
+RewriteRule ^index\.php(?:/|$) - [L]
+RewriteRule ^(?:build|img)(?:/|$) - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [L]

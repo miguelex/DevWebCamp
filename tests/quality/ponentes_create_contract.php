@@ -116,7 +116,7 @@ namespace {
         return $router;
     }
 
-    $root = dirname(__DIR__, 2);
+    $temporaryRoot = sys_get_temp_dir() . '/port18-speaker-create-contract-' . bin2hex(random_bytes(8));
     $originalDirectory = getcwd();
     $temporaryUpload = null;
     $failure = null;
@@ -127,9 +127,10 @@ namespace {
         checkSpeaker(session_start(['use_cookies' => false]), 'synthetic session started');
         $_SESSION = ['id' => 1, 'nombre' => 'Synthetic', 'admin' => 1];
 
-        checkSpeaker(chdir($root . '/public'), 'public working directory selected');
-        $uploadDirectory = '../public/img/speakers/';
-        checkSpeaker(is_dir($uploadDirectory), 'existing upload directory prevents mkdir');
+        checkSpeaker(mkdir($temporaryRoot . '/img/speakers', 0700, true), 'isolated public root created');
+        define('PUBLIC_PATH', $temporaryRoot);
+        checkSpeaker(chdir(sys_get_temp_dir()), 'working directory is unrelated to the public root');
+        $uploadDirectory = PUBLIC_PATH . '/img/speakers/';
         $existingFiles = scandir($uploadDirectory);
 
         $database = new FakeDatabase();
@@ -169,6 +170,11 @@ namespace {
         checkSpeaker($_POST['imagen'] !== 'forged-name'
             && preg_match('/\A[a-f0-9]{32}\z/D', $_POST['imagen']) === 1,
             'processed upload replaces the forged POST image name');
+        foreach (ImageManagerStatic::$saved as [$path, $format]) {
+            checkSpeaker(dirname($path) === $temporaryRoot . '/img/speakers'
+                && basename($path) === $_POST['imagen'] . '.' . $format,
+                'image save targets the isolated public root with its generated filename');
+        }
         checkSpeaker(scandir($uploadDirectory) === $existingFiles,
             'image double left no persistent upload files');
     } catch (\Throwable $error) {
@@ -182,6 +188,11 @@ namespace {
         }
         if ($originalDirectory !== false) {
             chdir($originalDirectory);
+        }
+        foreach (['/img/speakers', '/img', ''] as $directory) {
+            if (is_dir($temporaryRoot . $directory) && !rmdir($temporaryRoot . $directory)) {
+                $failure ??= new \RuntimeException('Cannot remove isolated public root.');
+            }
         }
         $output = ob_get_clean();
     }

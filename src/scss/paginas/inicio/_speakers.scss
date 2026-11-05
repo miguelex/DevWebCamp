@@ -2,6 +2,8 @@
 @use 'base/variables' as v;
 
 .speakers {
+    // Keep lateral entrance animations within the section.
+    overflow-x: clip;
 
     &__grid {
         @include m.contenedor;
@@ -29,13 +31,6 @@
                 url('../img/bg_#{$i}.webp') 1x,
                 url('../img/bg_#{$i}.png') 1x
             );
-        }
-    }
-
-    &__imagen {
-        min-width: 350px;
-        @include m.tablet {
-            min-width: unset;
         }
     }
 

@@ -125,3 +125,40 @@ loading, JavaScript conference selection, production image upload/real Intervent
 and an independently authorized isolated payment-validation review. No real PayPal operation
 or external request is part of PORT-9 block 5. Rollback is limited to this runner/schema,
 its opt-in harness additions, and this README section; production behavior is unchanged.
+
+## Public routing and agenda (PORT-18 block 1)
+
+With PHP 8.5 and the same five disposable `TEST_DB_*` settings, run both:
+
+```sh
+php scripts/run-http-public.php --server=php
+php scripts/run-http-public.php --server=apache
+```
+
+The Apache variant requires a non-root POSIX user, Apache 2.4 with `mpm_event`, `dir`,
+`mime`, `rewrite`, `proxy`, `proxy_fcgi`, and authorization modules, plus a matching
+PHP 8.5 CGI binary. Defaults are `/usr/sbin/apache2`, `/usr/lib/apache2/modules`, and
+`php-cgi` beside the CLI binary; override them using `APACHE_BINARY`,
+`APACHE_MODULE_DIRECTORY`, and `PHP_CGI_BINARY`. It starts private loopback Apache/CGI
+processes with `public/` as document root and overrides enabled, reading the real
+`public/.htaccess`. It does not change the machine's Apache configuration.
+The test-only CGI adapter unsets `REDIRECT_URL` to avoid PHP-CGI's legacy Apache Action
+heuristic; it leaves Apache's calculated `SCRIPT_FILENAME` and `PATH_INFO` untouched.
+
+Both variants use the real front controller without a synthetic router. A temporary
+auto-prepend probe observes, but never sets, `PATH_INFO`, method, query string, and body
+hash. Contracts cover friendly and `/index.php/...` public/protected/API/POST routes,
+the legacy missing-route `302 /404`, direct static CSS bytes, private-file non-exposure,
+and complete/partial/empty agendas through both public controllers. Apache additionally
+checks that missing `build/` and `img/` assets return native 404 without entering PHP.
+The PHP development server does not read `.htaccess`; its missing-asset behavior is
+intentionally not changed or represented as Apache evidence.
+
+The new harness rejects existing databases, reuses only the minimal functional schemas
+above, and seeds synthetic events/catalogs/speaker. It restores the event fixture and
+checks all six tables for unrelated row changes. PHP runs with `E_ALL`; any PHP error
+log output fails the contracts. A request allowlist excludes mail/payment operations,
+outbound PHP network functions are disabled in the server, and the client never follows
+redirects or fetches HTML resources. Cleanup stops listeners, drops only its created
+database, and removes private sessions/config/probe/log files even after failure.
+These are local backend contracts, not a Hostinger deployment or browser/visual check.
