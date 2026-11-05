@@ -2,6 +2,9 @@
 @use 'base/variables' as v;
 
 .boletos {
+    // Keep lateral entrance animations within the section.
+    overflow-x: clip;
+
     &__grid {
         @include m.contenedor-sm;
         @include m.grid(1, 5rem);

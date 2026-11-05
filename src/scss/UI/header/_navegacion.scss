@@ -4,6 +4,8 @@
 .navegacion {
     display: flex;
     flex-direction: column;
+    flex-wrap: wrap;
+    min-width: 0;
     @include m.tablet{
         flex-direction: row;
     }
@@ -14,6 +16,7 @@
         padding: 2rem;
         text-transform: uppercase;
         font-weight: v.$black;
+        overflow-wrap: anywhere;
 
         &--actual,
         &:hover{
