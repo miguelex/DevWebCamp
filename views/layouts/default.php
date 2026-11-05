@@ -30,6 +30,24 @@
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
     AOS.init();
+
+    let aosRefreshPending = false;
+    const refreshAosAfterImageLoad = () => {
+        if (aosRefreshPending) return;
+
+        aosRefreshPending = true;
+        // Batch image loads into one geometry update before the next paint.
+        requestAnimationFrame(() => {
+            aosRefreshPending = false;
+            AOS.refresh();
+        });
+    };
+
+    document.querySelectorAll('.speaker__imagen[loading="lazy"]').forEach((image) => {
+        if (!image.complete) {
+            image.addEventListener('load', refreshAosAfterImageLoad, { once: true });
+        }
+    });
     </script>
     <script src="/build/js/main.min.js" defer></script>
 </body>
